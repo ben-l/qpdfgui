@@ -84,7 +84,7 @@ class ExampleApp(QMainWindow, design.Ui_MainWindow):
                 self.show_dialog(icon=QMessageBox.Information, 
                                 text="{} pdf(s) successfully encrypted".format(len(itemsTextList)),
                                 window_title="Encrypt")
-
+                
 
     def decrypt(self):
         destination = QFileDialog.getExistingDirectory(self, "Pick a folder")
