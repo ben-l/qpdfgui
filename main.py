@@ -1,5 +1,5 @@
 import PyQt5.QtGui
-from PyQt5.QtWidgets import (QMainWindow, QApplication, QFileDialog, 
+from PyQt5.QtWidgets import (QMainWindow, QApplication, QFileDialog,
                              QInputDialog, QMessageBox, QLineEdit,
                              QCheckBox)
 from subprocess import Popen, PIPE
@@ -8,6 +8,13 @@ import subprocess
 import sys
 import os
 import design
+
+if os.name == 'posix':
+    #  linux os
+    program = 'qpdf'
+elif os.name == 'nt':
+    # windows os
+    program = 'qpdf.exe'
 
 
 class ExampleApp(QMainWindow, design.Ui_MainWindow):
@@ -21,7 +28,7 @@ class ExampleApp(QMainWindow, design.Ui_MainWindow):
         self.ShowPassword.clicked.connect(self.show_password)
         self.btnEncrypt.clicked.connect(self.encrypt)
         self.btnDecrypt.clicked.connect(self.decrypt)
-        #self.AESOption.activated[int]
+        # self.AESOption.activated[int]
 
     def show_dialog(self, icon=None, text=None, window_title=None):
         msg = QMessageBox()
@@ -60,31 +67,39 @@ class ExampleApp(QMainWindow, design.Ui_MainWindow):
     def aes_choice(self):
         pass
 
+    def not_found(self):
+        self.show_dialog(icon=QMessageBox.Warning,
+        text="QPDF Not found. Please install",
+        window_title="Error")
+
+
 
     def encrypt(self):
         identifier = '(en)'
         passwd = QLineEdit.text(self.btnPassword)
-        #aes_choice = self.AESOption.activated[int]
+        # aes_choice = self.AESOption.activated[int]
         aes_choice = str(self.AESOption.currentText()).strip('AES-')
         itemsTextList = [str(self.listWidget.item(i).text()) for i in range(self.listWidget.count())]
         text, ok = QInputDialog.getText(self, "Encrypt", "Confirm Password", QLineEdit.Password)
-        if ok:
-            #if ok is clicked as opposed to cancel, then check if both passwords match
-            if text != passwd:
-                self.show_dialog(icon=QMessageBox.Warning,
-                                 text="Passwords do not match. Try again",
-                                 window_title="Encrypt")
-            elif text == passwd:
-                destination = QFileDialog.getExistingDirectory(self, "Pick a folder")
-                for item in itemsTextList:
-                    new_file_path = Path(item)
-                    suffix = new_file_path.suffix
-                    process = subprocess.call(['qpdf.exe', '--encrypt', passwd, passwd, aes_choice, 
-                    '--', item, os.path.join(destination, new_file_path.stem+identifier+suffix)])
-                self.show_dialog(icon=QMessageBox.Information, 
-                                text="{} pdf(s) successfully encrypted".format(len(itemsTextList)),
-                                window_title="Encrypt")
-                
+        try:
+            if ok:
+                # if ok is clicked as opposed to cancel, then check if both passwords match
+                if text != passwd:
+                    self.show_dialog(icon=QMessageBox.Warning,
+                                     text="Passwords do not match. Try again",
+                                     window_title="Encrypt")
+                elif text == passwd:
+                    destination = QFileDialog.getExistingDirectory(self, "Pick a folder")
+                    for item in itemsTextList:
+                        new_file_path = Path(item)
+                        suffix = new_file_path.suffix
+                        process = subprocess.call([program, '--encrypt', passwd, passwd, aes_choice,
+                        '--', item, os.path.join(destination, new_file_path.stem+identifier+suffix)])
+                    self.show_dialog(icon=QMessageBox.Information,
+                                    text="{} pdf(s) successfully encrypted".format(len(itemsTextList)),
+                                    window_title="Encrypt")
+        except FileNotFoundError:
+            self.not_found()
 
     def decrypt(self):
         destination = QFileDialog.getExistingDirectory(self, "Pick a folder")
@@ -98,11 +113,14 @@ class ExampleApp(QMainWindow, design.Ui_MainWindow):
             suffix = new_file_path.suffix
             new_filename = new_file_path.stem+identifier+suffix
             try:
-                subprocess.check_output(['qpdf.exe', '--decrypt', '--password={}'.format(passwd), 
+                subprocess.check_output([program, '--decrypt', '--password={}'.format(passwd),
                                             item, os.path.join(destination, new_filename)])
-                """self.show_dialog(icon=QMessageBox.Information, 
+                """self.show_dialog(icon=QMessageBox.Information,
                                 text="{} pdf(s) successfully decrypted".format(len(itemsTextList)),
                                 window_title="decrypt")"""
+            except FileNotFoundError:
+                self.not_found()
+
             except subprocess.CalledProcessError as e:
                 if e.returncode == 2:
                     #append to list
@@ -112,7 +130,7 @@ class ExampleApp(QMainWindow, design.Ui_MainWindow):
                                     window_title="decrypt")"""
             else:
                 success.append(destination+new_filename)
-                """self.show_dialog(icon=QMessageBox.Information, 
+                """self.show_dialog(icon=QMessageBox.Information,
                                     text="{} pdf(s) successfully decrypted".format(len(success),
                                     window_title="decrypt")"""
         if len(unsuccessful) > 0:
@@ -120,7 +138,7 @@ class ExampleApp(QMainWindow, design.Ui_MainWindow):
                                             text="Bad Password for {} file(s):\n {} (returncode)".format(len(unsuccessful), "\n".join(unsuccessful)),
                                             window_title="decrypt")
         if len(success) > 0:
-                self.show_dialog(icon=QMessageBox.Information, 
+                self.show_dialog(icon=QMessageBox.Information,
                                         text="{} pdf(s) successfully decrypted:\n{}".format(len(success), "\n".join(success)),
                                         window_title="decrypt")
 
