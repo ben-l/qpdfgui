@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QFileDialog,
                              QInputDialog, QMessageBox, QLineEdit,
                              QCheckBox, QWidget, QProgressBar, QLabel,
-                             QDialog)
+                             QDialog, QGridLayout, QPushButton)
 from subprocess import Popen, PIPE
 from pathlib import Path
 import subprocess
@@ -17,6 +17,97 @@ if os.name == 'posix':
 elif os.name == 'nt':
     # windows os
     program = 'qpdf.exe'
+
+
+class DecryptScreen(QDialog):
+    def __init__(self, parent=None):
+        QDialog.__init__(self, parent)
+        self.parent = parent
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowTitle("Decrypt")
+        layout = QGridLayout(self)
+
+        # self.progress = QProgressBar(self)
+        # self.progress.setGeometry(100, 80, 150, 20)
+        self.resize(320, 180)
+        self.passwordLabel = QLabel("Password")
+        self.btnPassword = QLineEdit(self)
+        self.btnPassword.setEchoMode(QLineEdit.Password)
+        layout.addWidget(self.passwordLabel, 0, 0)
+        layout.addWidget(self.btnPassword, 0, 1)
+
+
+        self.ShowPassword = QCheckBox("Show Password")
+        layout.addWidget(self.ShowPassword, 1, 1, 1, 1)
+
+        self.progress = QProgressBar(self)
+        layout.addWidget(self.progress, 2, 1, 1, 1)
+
+        self.buttonOK = QPushButton('Ok', self)
+        layout.addWidget(self.buttonOK)
+        self.buttonOK.clicked.connect(self.disable_test)
+        self.show()
+        self.ShowPassword.clicked.connect(self.show_password)
+
+    def show_password(self):
+        if self.ShowPassword.isChecked():
+            self.btnPassword.setEchoMode(QLineEdit.Normal)
+        else:
+            self.btnPassword.setEchoMode(QLineEdit.Password)
+
+    def disable_test(self):
+        self.buttonOK.setEnabled(False)
+        self.btnPassword.setEnabled(False)
+
+
+class EncryptScreen(QDialog):
+    def __init__(self, parent=None):
+        QDialog.__init__(self, parent)
+        self.parent = parent
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowTitle("Encrypt")
+        layout = QGridLayout(self)
+
+        # self.progress = QProgressBar(self)
+        # self.progress.setGeometry(100, 80, 150, 20)
+        self.resize(320, 180)
+        self.passwordLabel = QLabel("Password")
+        self.btnPassword = QLineEdit(self)
+        self.btnPassword.setEchoMode(QLineEdit.Password)
+        layout.addWidget(self.passwordLabel, 0, 0)
+        layout.addWidget(self.btnPassword, 0, 1)
+
+        self.password2Label = QLabel("Confirm")
+        self.btnPassword2 = QLineEdit(self)
+        self.btnPassword2.setEchoMode(QLineEdit.Password)
+        layout.addWidget(self.password2Label, 1, 0)
+        layout.addWidget(self.btnPassword2, 1, 1)
+
+        self.ShowPassword = QCheckBox("Show Password")
+        layout.addWidget(self.ShowPassword, 2, 1, 1, 1)
+
+        self.progress = QProgressBar(self)
+        layout.addWidget(self.progress, 3, 1, 1, 1)
+
+        self.buttonOK = QPushButton('Ok', self)
+        layout.addWidget(self.buttonOK)
+        #self.buttonOK.clicked.connect(self.parent.encrypt)
+        self.buttonOK.clicked.connect(self.disable_test)
+        self.show()
+        self.ShowPassword.clicked.connect(self.show_password)
+
+    def show_password(self):
+        if self.ShowPassword.isChecked():
+            self.btnPassword.setEchoMode(QLineEdit.Normal)
+            self.btnPassword2.setEchoMode(QLineEdit.Normal)
+        else:
+            self.btnPassword.setEchoMode(QLineEdit.Password)
+            self.btnPassword2.setEchoMode(QLineEdit.Password)
+
+    def disable_test(self):
+        self.buttonOK.setEnabled(False)
+        self.btnPassword.setEnabled(False)
+        self.btnPassword2.setEnabled(False)
 
 
 class LoadingScreen(QWidget):
@@ -99,6 +190,8 @@ class ExampleApp(QMainWindow, design.Ui_MainWindow):
 
     def clear_all(self):
         self.listWidget.clear()
+        # self.new_progress_screen = EncryptScreen(self)
+        self.new_progress_screen = DecryptScreen(self)
 
     def show_password(self):
         # self.show_progress_bar()
