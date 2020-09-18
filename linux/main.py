@@ -6,17 +6,34 @@ from PyQt5.QtWidgets import (QMainWindow, QApplication, QFileDialog,
                              QDialog, QGridLayout, QPushButton)
 from subprocess import Popen, PIPE
 from pathlib import Path
+import design
+import os
 import subprocess
 import sys
-import os
-import design
+import threading
+
 
 if os.name == 'posix':
     #  linux os
+    default_output_dir = os.path.expanduser('~/Downloads')
     program = 'qpdf'
 elif os.name == 'nt':
     # windows os
+    default_output_dir = os.path.expandvars(r'%USERPROFILE%\Downloads')
     program = 'qpdf.exe'
+
+
+
+# subprocess.call and check_call are blocking (waits for the child process to return)
+# so we need to use threading
+class RepeatingTimer(threading.__Timer):
+    def run(self):
+        while True:
+            self.finished.wait(self.interval)
+            if self.finished.is_set():
+                return
+            else:
+                self.function(*self.args, **self.kwargs)
 
 
 class DecryptScreen(QDialog):
@@ -45,7 +62,7 @@ class DecryptScreen(QDialog):
 
         self.buttonOK = QPushButton('Ok', self)
         layout.addWidget(self.buttonOK)
-        self.buttonOK.clicked.connect(self.disable_test)
+        self.buttonOK.clicked.connect(self.disable_btns)
         self.show()
         self.ShowPassword.clicked.connect(self.show_password)
 
@@ -55,10 +72,10 @@ class DecryptScreen(QDialog):
         else:
             self.btnPassword.setEchoMode(QLineEdit.Password)
 
-    def disable_test(self):
+    def disable_btns(self):
         self.buttonOK.setEnabled(False)
         self.btnPassword.setEnabled(False)
-
+        self.parent.decrypt(self.btnPassword, self.progress, self.buttonOK)
 
 class EncryptScreen(QDialog):
     def __init__(self, parent=None):
@@ -108,6 +125,7 @@ class EncryptScreen(QDialog):
         self.buttonOK.setEnabled(False)
         self.btnPassword.setEnabled(False)
         self.btnPassword2.setEnabled(False)
+        self.parent.decrypt
 
 
 class LoadingScreen(QWidget):
@@ -149,7 +167,7 @@ class ExampleApp(QMainWindow, design.Ui_MainWindow):
         self.btnClearAll.clicked.connect(self.clear_all)
         self.ShowPassword.clicked.connect(self.show_password)
         self.btnEncrypt.clicked.connect(self.encrypt)
-        self.btnDecrypt.clicked.connect(self.decrypt)
+        self.btnDecrypt.clicked.connect(self.decrypt_screen)
         # self.AESOption.activated[int]
 
     def show_dialog(self, icon=None, text=None, window_title=None):
@@ -191,7 +209,7 @@ class ExampleApp(QMainWindow, design.Ui_MainWindow):
     def clear_all(self):
         self.listWidget.clear()
         # self.new_progress_screen = EncryptScreen(self)
-        self.new_progress_screen = DecryptScreen(self)
+        #self.new_progress_screen = DecryptScreen(self)
 
     def show_password(self):
         # self.show_progress_bar()
@@ -237,22 +255,29 @@ class ExampleApp(QMainWindow, design.Ui_MainWindow):
         except FileNotFoundError:
             self.not_found()
 
-    def decrypt(self):
-        destination = QFileDialog.getExistingDirectory(self, "Pick a folder")
+    def decrypt_screen(self):
+        new_decrypt_screen = DecryptScreen(self)
+
+
+    def decrypt(self, passwd, progress, okbtn):
+        destination = default_output_dir
         identifier = '(de)'
         success = []
         unsuccessful = []
-        passwd = QLineEdit.text(self.btnPassword)
+        #passwd = QLineEdit.text(self.btnPassword)
         itemsTextList = [str(self.listWidget.item(i).text()) for i in range(self.listWidget.count())]
         for item in itemsTextList:
             new_file_path = Path(item)
             suffix = new_file_path.suffix
             new_filename = new_file_path.stem+identifier+suffix
             try:
-                self.loading_screen = LoadingScreen()
-                subprocess.check_output([program, '--decrypt', '--password={}'.format(passwd),
-                                            item, os.path.join(destination, new_filename)])
-                self.loading_screen.stopAnimation()
+                #self.loading_screen = LoadingScreen()
+                self.completed = 0
+                while(subprocess.check_output([program, '--decrypt', '--password={}'.format(passwd.text()),
+                    item, os.path.join(destination, new_filename)]) != 0):
+                    self.completed += 1
+                    progress.setValue(self.completed)
+                #self.loading_screen.stopAnimation()
                 """self.show_dialog(icon=QMessageBox.Information,
                                 text="{} pdf(s) successfully decrypted".format(len(itemsTextList)),
                                 window_title="decrypt")"""
@@ -275,6 +300,8 @@ class ExampleApp(QMainWindow, design.Ui_MainWindow):
                     self.show_dialog(icon=QMessageBox.Warning,
                                             text="Bad Password for {} file(s):\n {} (returncode)".format(len(unsuccessful), "\n".join(unsuccessful)),
                                             window_title="decrypt")
+                    okbtn.setEnabled(True)
+                    passwd.setEnabled(True)
         if len(success) > 0:
                 self.show_dialog(icon=QMessageBox.Information,
                                         text="{} pdf(s) successfully decrypted:\n{}".format(len(success), "\n".join(success)),
