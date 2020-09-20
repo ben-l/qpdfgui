@@ -1,0 +1,12 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>resources/view_simple [#815].png</file>
+    <file>resources/edit [#1479].png</file>
+    <file>resources/lock_open [#706].png</file>
+    <file>resources/lock_close [#705].png</file>
+    <file>resources/folder__plus_fill [#1788].png</file>
+    <file>resources/file_pdf [#1729].png</file>
+    <file>resources/delete [#1487].png</file>
+    <file>resources/arrow_in_right [#385].png</file>
+  </qresource>
+</RCC>

@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget { 
+background-color: #1E1E1E;
+color: #ffffff;
+font-weight: bold;
+padding: 5px; 
+}
+
+QListWidget::item:hover{
+	background-color: #18ff94;
+	color: #1E1E1E;
+}
+
+QListWidget::item::selected{
+	background-color: #18ff94;
+	color: #1E1E1E;
+}</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <widget class="QListWidget" name="listWidget">
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="acceptDrops">
+       <bool>false</bool>
+      </property>
+      <property name="toolTip">
+       <string/>
+      </property>
+      <property name="dragEnabled">
+       <bool>true</bool>
+      </property>
+      <property name="dragDropMode">
+       <enum>QAbstractItemView::DragDrop</enum>
+      </property>
+      <property name="defaultDropAction">
+       <enum>Qt::MoveAction</enum>
+      </property>
+      <property name="selectionMode">
+       <enum>QAbstractItemView::ExtendedSelection</enum>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>31</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::AllToolBarAreas</set>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="btnOpenFile"/>
+   <addaction name="btnOpenFolder"/>
+   <addaction name="btnRemoveFile"/>
+   <addaction name="btnEncrypt"/>
+   <addaction name="btnDecrypt"/>
+   <addaction name="actionExit"/>
+  </widget>
+  <action name="btnOpenFile">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/icons/resources/file_pdf [#1729].png</normaloff>:/icons/resources/file_pdf [#1729].png</iconset>
+   </property>
+   <property name="text">
+    <string>Import File</string>
+   </property>
+   <property name="toolTip">
+    <string>Import File</string>
+   </property>
+  </action>
+  <action name="btnOpenFolder">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/icons/resources/folder__plus_fill [#1788].png</normaloff>:/icons/resources/folder__plus_fill [#1788].png</iconset>
+   </property>
+   <property name="text">
+    <string>Import Folder</string>
+   </property>
+   <property name="toolTip">
+    <string>Import Folder</string>
+   </property>
+  </action>
+  <action name="btnRemoveFile">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/icons/resources/delete [#1487].png</normaloff>:/icons/resources/delete [#1487].png</iconset>
+   </property>
+   <property name="text">
+    <string>Delete</string>
+   </property>
+   <property name="toolTip">
+    <string>Delete Selected Files(s)</string>
+   </property>
+  </action>
+  <action name="btnEncrypt">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/icons/resources/lock_close [#705].png</normaloff>:/icons/resources/lock_close [#705].png</iconset>
+   </property>
+   <property name="text">
+    <string>Encrypt</string>
+   </property>
+   <property name="toolTip">
+    <string>Encrypt</string>
+   </property>
+  </action>
+  <action name="btnDecrypt">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/icons/resources/lock_open [#706].png</normaloff>:/icons/resources/lock_open [#706].png</iconset>
+   </property>
+   <property name="text">
+    <string>Decrypt</string>
+   </property>
+   <property name="toolTip">
+    <string>Decrypt</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/icons/resources/arrow_in_right [#385].png</normaloff>:/icons/resources/arrow_in_right [#385].png</iconset>
+   </property>
+   <property name="text">
+    <string>Exit</string>
+   </property>
+   <property name="toolTip">
+    <string>Exit</string>
+   </property>
+  </action>
+  <action name="ShowPassword">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/icons/resources/view_simple [#815].png</normaloff>:/icons/resources/view_simple [#815].png</iconset>
+   </property>
+   <property name="text">
+    <string>Show Password</string>
+   </property>
+   <property name="toolTip">
+    <string>Show Password</string>
+   </property>
+  </action>
+  <action name="actionEdit">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/icons/resources/edit [#1479].png</normaloff>:/icons/resources/edit [#1479].png</iconset>
+   </property>
+   <property name="text">
+    <string>Edit</string>
+   </property>
+   <property name="toolTip">
+    <string>Edit</string>
+   </property>
+  </action>
+ </widget>
+ <resources>
+  <include location="../resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>
