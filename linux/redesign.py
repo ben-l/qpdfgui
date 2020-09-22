@@ -11,6 +11,48 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
+class MyListWidget(QtWidgets.QListWidget):
+    def __init__(self, parent):
+        super(MyListWidget, self).__init__(parent)
+        self.setObjectName("listWidget")
+        self.setAcceptDrops(True)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
+        self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        font.setBold(True)
+        font.setWeight(75)
+        self.setFont(font)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.setDropAction(QtCore.Qt.CopyAction)
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.setDropAction(QtCore.Qt.CopyAction)
+            event.accept
+            links = []
+
+            for url in event.mimeData().urls():
+                if url.isLocalFile():
+                    links.append(str(url.toLocalFile()))
+                else:
+                    links.append(str(url.toString()))
+            self.addItems(links)
+        else:
+            event.ignore()
+
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -35,18 +77,11 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout.setObjectName("gridLayout")
-        self.listWidget = QtWidgets.QListWidget(self.centralwidget)
+        self.listWidget = MyListWidget(self.centralwidget)
         font = QtGui.QFont()
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
-        self.listWidget.setFont(font)
-        self.listWidget.setAcceptDrops(True)
-        # self.listWidget.setDragEnabled(True)
-        # self.listWidget.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
-        # self.listWidget.setDefaultDropAction(QtCore.Qt.MoveAction)
-        self.listWidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.listWidget.setObjectName("listWidget")
         self.gridLayout.addWidget(self.listWidget, 0, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
@@ -108,45 +143,10 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.accept()
-            print("accepted")
-        else:
-            event.ignore()
-            print("ignored")
-
-    def dragMoveEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.setDropAction(QtCore.Qt.CopyAction)
-            event.accept()
-            print("accepted")
-        else:
-            event.ignore()
-            print("ignored")
-
-    def dropEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.setDropAction(QtCore.Qt.CopyAction)
-            event.accept
-            print("accepted")
-
-            links = []
-
-            for url in event.mimeData().urls():
-                if url.isLocalFile():
-                    links.append(str(url.toLocalFile()))
-                else:
-                    links.append(str(url.toString()))
-            self.addItems(links)
-        else:
-            event.ignore()
-            print("ignored")
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.listWidget.setToolTip(_translate("MainWindow", "List of Files"))
         self.toolBar.setWindowTitle(_translate("MainWindow", "toolBar"))
         self.btnOpenFile.setText(_translate("MainWindow", "Import File"))
         self.btnOpenFile.setToolTip(_translate("MainWindow", "Import File"))
