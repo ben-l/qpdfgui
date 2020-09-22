@@ -1,6 +1,7 @@
 <RCC>
   <qresource prefix="icons">
     <file>resources/view_simple [#815].png</file>
+    <file>resources/view_simple [#815].svg</file>
     <file>resources/edit [#1479].png</file>
     <file>resources/lock_open [#706].png</file>
     <file>resources/lock_close [#705].png</file>

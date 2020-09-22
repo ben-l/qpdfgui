@@ -1,9 +1,10 @@
 from PyQt5.QtGui import QMovie, QPixmap, QIcon
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QSize
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QFileDialog,
                              QInputDialog, QMessageBox, QLineEdit,
                              QCheckBox, QWidget, QProgressBar, QLabel,
-                             QDialog, QGridLayout, QPushButton, QAction)
+                             QDialog, QGridLayout, QPushButton, QAction,
+                             QHBoxLayout)
 from subprocess import Popen, PIPE
 from pathlib import Path
 import design
@@ -49,40 +50,46 @@ class DecryptScreen(QDialog):
         layout.addWidget(self.passwordLabel, 0, 0)
         layout.addWidget(self.btnPassword, 0, 1)
 
-        self.ShowPassword = QCheckBox(self)
-        self.ShowPassword.setCheckable(True)
         icon1 = QIcon()
         icon1.addPixmap(QPixmap(":/icons/resources/view_simple [#815].png"), QIcon.Normal, QIcon.Off)
-        self.ShowPassword.setIcon(icon1)
-        self.ShowPassword.setObjectName("ShowPassword")
-        '''
-        self.btnPassword.addAction(self.ShowPassword)
-        self.ShowPassword = QCheckBox("Show Password")
-        icon1 = QIcon()
-        icon1.addPixmap(QPixmap(":/icons/resources/view_simple [#815].png"), QIcon.Normal, QIcon.Off)
-        self.ShowPassword.SetIcon(icon1)
-        '''
-        layout.addWidget(self.ShowPassword, 1, 1, 1, 1)
+        #self.btnReveal = QAction(self)
+        # self.btnReveal.setIcon(icon1)
+        self.reveal = self.btnPassword.addAction(icon1, QLineEdit.TrailingPosition)
+        self.reveal.triggered.connect(self.show_password)
+        self.password_shown = False
+        # self.togglePassword = self.addAction(QLineEdit.TrailingPosition)
 
-        self.progress = QProgressBar(self)
-        layout.addWidget(self.progress, 2, 1, 1, 1)
+
+        self.label_animation = QLabel(self)
+        self.movie = QMovie('loading.gif')
+        self.label_animation.setMovie(self.movie)
+        # self.label_animation.setText("test")
+        layout.addWidget(self.label_animation, 2, 1, 1, 1)
+        self.movie.start()
+        # self.label_animation.setHidden(True)
+        # self.label_animation.adjustSize()
+
+        self.status = QLabel("Decrypting...")
+        self.status.setHidden(True)
+        layout.addWidget(self.status, 3, 1, 1, 1)
 
         self.buttonOK = QPushButton('Ok', self)
         layout.addWidget(self.buttonOK)
         self.buttonOK.clicked.connect(self.disable_btns)
         self.show()
-        self.ShowPassword.clicked.connect(self.show_password)
 
     def show_password(self):
-        if self.ShowPassword.isChecked():
+        if not self.password_shown:
             self.btnPassword.setEchoMode(QLineEdit.Normal)
+            self.password_shown = True
         else:
             self.btnPassword.setEchoMode(QLineEdit.Password)
+            self.password_shown = False
 
     def disable_btns(self):
         self.buttonOK.setEnabled(False)
         self.btnPassword.setEnabled(False)
-        self.parent.decrypt(self.btnPassword, self.progress, self.buttonOK)
+        self.parent.decrypt(self.btnPassword, self.buttonOK, self.movie, self.label_animation, self.status)
 
 
 class EncryptScreen(QDialog):
@@ -268,7 +275,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
     def decrypt_screen(self):
         new_decrypt_screen = DecryptScreen(self)
 
-    def decrypt(self, passwd, progress, okbtn):
+    def decrypt(self, passwd, okbtn, movie, label_animation, status):
         destination = default_output_dir
         identifier = '(de)'
         success = []
@@ -281,22 +288,37 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
             new_filename = new_file_path.stem+identifier+suffix
             try:
                 # self.completed = 0
-                subprocess.Popen([program, '--decrypt', '--password={}'.format(passwd.text()), item, os.path.join(destination, new_filename)], stdout=subprocess.PIPE)
+                movie.start()
+                status = QLabel("Decrypting...")
+                p = subprocess.Popen([program, '--decrypt', '--password={}'.format(passwd.text()), item, os.path.join(destination, new_filename)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+                movie.stop()
+                output, error = p.communicate()
+                if p.returncode == 1:
+                    self.show_dialog(icon=QMessageBox.Warning, text="An Error occurred ({})".format(p.returncode), window_title="decrypt")
+                    label_animation.setText("Failed")
+                elif p.returncode == 2:
+                    unsuccessful.append(item)
+                    label_animation.setText("Failed")
+                else:
+                    success.append(destination+new_filename)
+                    label_animation.setText("Completed")
+                # for line in p.stdout:
+                #     print(line)
 #                subprocess.check_output([program, '--decrypt', '--password={}'.format(passwd.text()), item, os.path.join(destination, new_filename)]) != 0):
                     # self.completed += 1
                     # progress.setValue(self.completed)
             except FileNotFoundError:
                 self.not_found()
 
-            except subprocess.CalledProcessError as e:
-                if e.returncode == 2:
-                    # append to list
-                    unsuccessful.append(item)
-            else:
-                success.append(destination+new_filename)
+            # except subprocess.CalledProcessError as e:
+            #     if e.returncode == 2:
+            #         # append to list
+            #         unsuccessful.append(item)
+            # else:
+            #     success.append(destination+new_filename)
         if len(unsuccessful) > 0:
             self.show_dialog(icon=QMessageBox.Warning,
-                             text="Bad Password for {} file(s):\n {} (returncode)".format(len(unsuccessful), "\n".join(unsuccessful)),
+                             text="Bad Password for {} file(s):\n {}".format(len(unsuccessful), "\n".join(unsuccessful)),
                              window_title="decrypt")
             okbtn.setEnabled(True)
             passwd.setEnabled(True)
