@@ -42,9 +42,9 @@ class Ui_MainWindow(object):
         font.setWeight(75)
         self.listWidget.setFont(font)
         self.listWidget.setAcceptDrops(True)
-        self.listWidget.setDragEnabled(True)
-        self.listWidget.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
-        self.listWidget.setDefaultDropAction(QtCore.Qt.MoveAction)
+        # self.listWidget.setDragEnabled(True)
+        # self.listWidget.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
+        # self.listWidget.setDefaultDropAction(QtCore.Qt.MoveAction)
         self.listWidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.listWidget.setObjectName("listWidget")
         self.gridLayout.addWidget(self.listWidget, 0, 0, 1, 1)
@@ -109,22 +109,27 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls:
+        if event.mimeData().hasUrls():
             event.accept()
+            print("accepted")
         else:
             event.ignore()
+            print("ignored")
 
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls():
             event.setDropAction(QtCore.Qt.CopyAction)
             event.accept()
+            print("accepted")
         else:
             event.ignore()
+            print("ignored")
 
     def dropEvent(self, event):
         if event.mimeData().hasUrls():
             event.setDropAction(QtCore.Qt.CopyAction)
             event.accept
+            print("accepted")
 
             links = []
 
@@ -136,6 +141,7 @@ class Ui_MainWindow(object):
             self.addItems(links)
         else:
             event.ignore()
+            print("ignored")
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate

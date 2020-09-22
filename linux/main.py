@@ -73,7 +73,7 @@ class DecryptScreen(QDialog):
         self.status.setHidden(True)
         layout.addWidget(self.status, 3, 1, 1, 1)
 
-        self.buttonOK = QPushButton('Ok', self)
+        self.buttonOK = QPushButton('Decrypt', self)
         layout.addWidget(self.buttonOK)
         self.buttonOK.clicked.connect(self.disable_btns)
         self.show()
