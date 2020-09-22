@@ -186,6 +186,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
         self.btnDecrypt.triggered.connect(self.decrypt_screen)
         # self.AESOption.activated[int]
 
+
     def exit(self):
         sys.exit(0)
 
