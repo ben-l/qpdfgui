@@ -29,10 +29,6 @@ elif os.name == 'nt':
     program = 'qpdf.exe'
 
 
-logging.basicConfig(filename="output.log", filemode='w', level=logging.INFO,
-                    format='%(asctime)s:%(levelname)s:%(message)s')
-
-logging.info("test1")
 
 
 # subprocess.call and check_call are blocking
@@ -321,6 +317,9 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
             self.not_found()
 
     def write_to_log(self, text):
+        logging.basicConfig(filename="output.log", filemode='w', level=logging.INFO,
+                            format='%(asctime)s:%(levelname)s:%(message)s')
+        logging.info("test1")
         with open('log.txt', 'w') as f:
             f.write(text + "\n")
 
@@ -338,6 +337,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
             # logEdit.setPlainText("No files to decrypt")
             self.write_to_log("[test] No files to decrypt")
         else:
+            self.write_to_log("[test] Decrypting...")
             for item in itemsTextList:
                 new_file_path = Path(item)
                 suffix = new_file_path.suffix
@@ -345,7 +345,6 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
                 try:
                     # self.completed = 0
                     # logEdit.setPlainText("Decrypting...")
-                    self.write_to_log("[test] Decrypting...")
                     p = subprocess.Popen([program, '--decrypt', '--password={}'.format(passwd.text()), item, os.path.join(destination, new_filename)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
                     okbtn.setEnabled(True)
                     passwd.setEnabled(True)
@@ -354,7 +353,8 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
                         self.show_dialog(icon=QMessageBox.Warning, text="An Error occurred ({})".format(p.returncode), window_title="decrypt")
                     elif p.returncode == 2:
                         unsuccessful.append(item)
-                        logEdit.setPlainText("Bad Password ({}) for:\n {}".format(p.returncode, "\n".join(unsuccessful)))
+                        # logEdit.setPlainText("Bad Password ({}) for:\n{}".format(p.returncode, "\n".join(unsuccessful)))
+                        self.write_to_log("Bad Password ({}): {}".format(p.returncode, item))
                     else:
                         success.append(destination+new_filename)
                     # for line in p.stdout:
@@ -364,7 +364,11 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
                         # progress.setValue(self.completed)
                 except FileNotFoundError:
                     self.not_found()
-
+        # put reading log file into a new func that uses threads
+        # so that we can use both decrypt and encrypt whilst displaying log file
+        open_log = open('log.txt', 'r')
+        logEdit.setPlainText(open_log.read())
+        open_log.close()
                 # except subprocess.CalledProcessError as e:
                 #     if e.returncode == 2:
                 #         # append to list
@@ -373,7 +377,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
                 #     success.append(destination+new_filename)
         if len(unsuccessful) > 0:
             self.show_dialog(icon=QMessageBox.Warning,
-                             text="Bad Password for {} file(s):\n {}".format(len(unsuccessful), "\n".join(unsuccessful)),
+                             text="Bad Password for {} file(s):\n{}".format(len(unsuccessful), "\n".join(unsuccessful)),
                              window_title="decrypt")
         if len(success) > 0:
             self.show_dialog(icon=QMessageBox.Information,
