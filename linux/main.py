@@ -10,6 +10,7 @@ from pathlib import Path
 import design
 import redesign
 import decrypt
+import encrypt
 import logging
 import os
 import subprocess
@@ -29,8 +30,6 @@ elif os.name == 'nt':
     program = 'qpdf.exe'
 
 
-
-
 # subprocess.call and check_call are blocking
 # (waits for the child process to return)
 # so we need to use threading
@@ -46,6 +45,7 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
         self.btnPassword.setEchoMode(QLineEdit.Password)
         self.buttonOK.clicked.connect(self.disable_btns)
         self.buttonClose.clicked.connect(self.close)
+        self.setWindowTitle("Decrypt")
 
         # show password
         icon1 = QIcon()
@@ -78,49 +78,32 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
         self.parent.decrypt(self.btnPassword, self.buttonOK, self.logEdit)
 
 
-class DecryptTest(QDialog):
+class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
     def __init__(self, parent=None):
         QDialog.__init__(self, parent)
+        self.setupUi(self)
         self.parent = parent
-        self.setWindowModality(Qt.ApplicationModal)
-        self.setWindowTitle("Decrypt")
-        layout = QGridLayout(self)
-
-        # self.progress = QProgressBar(self)
-        # self.progress.setGeometry(100, 80, 150, 20)
-        self.resize(320, 180)
-        self.passwordLabel = QLabel("Password")
-        self.btnPassword = QLineEdit(self)
+        self.resize(520, 280)
+        self.outputDir.setText(default_output_dir)
+        self.changeDir.clicked.connect(self.change_outputdir)
         self.btnPassword.setEchoMode(QLineEdit.Password)
-        layout.addWidget(self.passwordLabel, 0, 0)
-        layout.addWidget(self.btnPassword, 0, 1)
-
-        icon1 = QIcon()
-        icon1.addPixmap(QPixmap(":/icons/resources/view_simple [#815].png"), QIcon.Normal, QIcon.Off)
-        #self.btnReveal = QAction(self)
-        # self.btnReveal.setIcon(icon1)
-        self.reveal = self.btnPassword.addAction(icon1, QLineEdit.TrailingPosition)
-        self.reveal.triggered.connect(self.show_password)
-        self.password_shown = False
-        # self.togglePassword = self.addAction(QLineEdit.TrailingPosition)
-
-
-        self.label_animation = QLabel(self)
-        self.movie = QMovie('loading.gif')
-        self.label_animation.setMovie(self.movie)
-        # self.label_animation.setText("test")
-        layout.addWidget(self.label_animation, 2, 1, 1, 1)
-        self.movie.start()
-        # self.label_animation.setHidden(True)
-        # self.label_animation.adjustSize()
-
-        self.status = QLabel("Decrypting...")
-        self.status.setHidden(True)
-        layout.addWidget(self.status, 3, 1, 1, 1)
-
-        self.buttonOK = QPushButton('Decrypt', self)
-        layout.addWidget(self.buttonOK)
+        self.btnPassword2.setEchoMode(QLineEdit.Password)
         self.buttonOK.clicked.connect(self.disable_btns)
+        self.buttonClose.clicked.connect(self.close)
+        # self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowTitle("Encrypt")
+        # show password
+        icon1 = QIcon()
+        icon1.addPixmap(QPixmap(":/icons/resources/view_simple [#815].png"),
+                        QIcon.Normal, QIcon.Off)
+        self.reveal = self.btnPassword.addAction(icon1,
+                                                 QLineEdit.TrailingPosition)
+        self.reveal2 = self.btnPassword2.addAction(icon1,
+                                                   QLineEdit.TrailingPosition)
+        self.reveal.triggered.connect(self.show_password)
+        self.reveal2.triggered.connect(self.show_password2)
+        self.password_shown = False
+
         self.show()
 
     def show_password(self):
@@ -131,62 +114,26 @@ class DecryptTest(QDialog):
             self.btnPassword.setEchoMode(QLineEdit.Password)
             self.password_shown = False
 
+    def show_password2(self):
+        if not self.password_shown:
+            self.btnPassword2.setEchoMode(QLineEdit.Normal)
+            self.password_shown = True
+        else:
+            self.btnPassword2.setEchoMode(QLineEdit.Password)
+            self.password_shown = False
+
+    def change_outputdir(self):
+        default_output_dir = QFileDialog.getExistingDirectory(self,
+                                                              "Pick a folder")
+        if default_output_dir:
+            self.outputDir.setText(default_output_dir)
+
     def disable_btns(self):
         self.buttonOK.setEnabled(False)
         self.btnPassword.setEnabled(False)
-        self.parent.decrypt(self.btnPassword, self.buttonOK, self.movie,
-                            self.label_animation, self.status)
-
-
-class EncryptScreen(QDialog):
-    def __init__(self, parent=None):
-        QDialog.__init__(self, parent)
-        self.parent = parent
-        self.setWindowModality(Qt.ApplicationModal)
-        self.setWindowTitle("Encrypt")
-        layout = QGridLayout(self)
-
-        # self.progress = QProgressBar(self)
-        # self.progress.setGeometry(100, 80, 150, 20)
-        self.resize(320, 180)
-        self.passwordLabel = QLabel("Password")
-        self.btnPassword = QLineEdit(self)
-        self.btnPassword.setEchoMode(QLineEdit.Password)
-        layout.addWidget(self.passwordLabel, 0, 0)
-        layout.addWidget(self.btnPassword, 0, 1)
-
-        self.password2Label = QLabel("Confirm")
-        self.btnPassword2 = QLineEdit(self)
-        self.btnPassword2.setEchoMode(QLineEdit.Password)
-        layout.addWidget(self.password2Label, 1, 0)
-        layout.addWidget(self.btnPassword2, 1, 1)
-
-        self.ShowPassword = QCheckBox("Show Password")
-        layout.addWidget(self.ShowPassword, 2, 1, 1, 1)
-
-        self.progress = QProgressBar(self)
-        layout.addWidget(self.progress, 3, 1, 1, 1)
-
-        self.buttonOK = QPushButton('Ok', self)
-        layout.addWidget(self.buttonOK)
-        # self.buttonOK.clicked.connect(self.parent.encrypt)
-        self.buttonOK.clicked.connect(self.disable_test)
-        self.show()
-        self.ShowPassword.clicked.connect(self.show_password)
-
-    def show_password(self):
-        if self.ShowPassword.isChecked():
-            self.btnPassword.setEchoMode(QLineEdit.Normal)
-            self.btnPassword2.setEchoMode(QLineEdit.Normal)
-        else:
-            self.btnPassword.setEchoMode(QLineEdit.Password)
-            self.btnPassword2.setEchoMode(QLineEdit.Password)
-
-    def disable_test(self):
-        self.buttonOK.setEnabled(False)
-        self.btnPassword.setEnabled(False)
         self.btnPassword2.setEnabled(False)
-        self.parent.decrypt
+        self.parent.encrypt(self.btnPassword, self.btnPassword2, self.buttonOK, self.logEdit)
+
 
 
 class LoadingScreen(QWidget):
@@ -227,7 +174,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
         self.btnOpenFile.triggered.connect(self.add_file)
         self.btnRemoveFile.triggered.connect(self.remove_file)
         # self.btnClearAll.triggered.connect(self.clear_all)
-        self.btnEncrypt.triggered.connect(self.encrypt)
+        self.btnEncrypt.triggered.connect(self.encrypt_screen)
         self.btnDecrypt.triggered.connect(self.decrypt_screen)
         # self.AESOption.activated[int]
 
@@ -289,92 +236,93 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
                          text="QPDF Not found. Please install",
                          window_title="Error")
 
-    def encrypt(self):
-        identifier = '(en)'
-        # passwd = QLineEdit.text(self.btnPassword)
+    def encrypt_screen(self):
+        new_encrypt_screen = EncryptScreen(self)
+
+    def encrypt(self, passwd, passwd2, okbtn, logEdit):
+        destination = default_output_dir
+        identifier = '(encry)'
+        logging.basicConfig(filename="output.log", filemode='w', level=logging.INFO,
+                            format='%(asctime)s:%(levelname)s:%(message)s', datefmt='%H:%M:%S')
         # aes_choice = self.AESOption.activated[int]
         # aes_choice = str(self.AESOption.currentText()).strip('AES-')
         itemsTextList = [str(self.listWidget.item(i).text()) for i in range(self.listWidget.count())]
-        text, ok = QInputDialog.getText(self, "Encrypt", "Confirm Password", QLineEdit.Password)
-        try:
-            if ok:
-                # if ok is clicked as opposed to cancel, then check if both passwords match
-                if text != passwd:
-                    self.show_dialog(icon=QMessageBox.Warning,
-                                     text="Passwords do not match. Try again",
-                                     window_title="Encrypt")
-                elif text == passwd:
-                    destination = QFileDialog.getExistingDirectory(self, "Pick a folder")
-                    for item in itemsTextList:
-                        new_file_path = Path(item)
-                        suffix = new_file_path.suffix
-                        process = subprocess.call([program, '--encrypt', passwd, passwd, aes_choice,
-                        '--', item, os.path.join(destination, new_file_path.stem+identifier+suffix)])
-                    self.show_dialog(icon=QMessageBox.Information,
-                                    text="{} pdf(s) successfully encrypted".format(len(itemsTextList)),
-                                    window_title="Encrypt")
-        except FileNotFoundError:
-            self.not_found()
-
-    def write_to_log(self, text):
-        logging.basicConfig(filename="output.log", filemode='w', level=logging.INFO,
-                            format='%(asctime)s:%(levelname)s:%(message)s')
-        logging.info("test1")
-        with open('log.txt', 'w') as f:
-            f.write(text + "\n")
-
-    def decrypt_screen(self):
-        new_decrypt_screen = DecryptScreen(self)
-
-    def decrypt(self, passwd, okbtn, logEdit):
-        destination = default_output_dir
-        identifier = '(de)'
-        success = []
-        unsuccessful = []
-        # passwd = QLineEdit.text(self.btnPassword)
-        itemsTextList = [str(self.listWidget.item(i).text()) for i in range(self.listWidget.count())]
-        if len(itemsTextList) == 0:
-            # logEdit.setPlainText("No files to decrypt")
-            self.write_to_log("[test] No files to decrypt")
-        else:
-            self.write_to_log("[test] Decrypting...")
+        if passwd.text() != passwd2.text():
+            # self.write_to_log("Passwords do not match")
+            logging.info("Passwords do not match")
+            """
+            self.show_dialog(icon=QMessageBox.Warning,
+                             text="Passwords do not match. Try again",
+                             window_title="Encrypt")
+            """
+        elif passwd.text() == passwd2.text():
             for item in itemsTextList:
                 new_file_path = Path(item)
                 suffix = new_file_path.suffix
                 new_filename = new_file_path.stem+identifier+suffix
                 try:
-                    # self.completed = 0
-                    # logEdit.setPlainText("Decrypting...")
-                    p = subprocess.Popen([program, '--decrypt', '--password={}'.format(passwd.text()), item, os.path.join(destination, new_filename)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+                    subprocess.check_output([program, '--encrypt', passwd.text(), passwd2.text(), '256', '--', item, os.path.join(destination, new_filename)],
+                                            stderr=subprocess.STDOUT).decode()
                     okbtn.setEnabled(True)
                     passwd.setEnabled(True)
-                    output, error = p.communicate()
-                    if p.returncode == 1:
-                        self.show_dialog(icon=QMessageBox.Warning, text="An Error occurred ({})".format(p.returncode), window_title="decrypt")
-                    elif p.returncode == 2:
-                        unsuccessful.append(item)
-                        # logEdit.setPlainText("Bad Password ({}) for:\n{}".format(p.returncode, "\n".join(unsuccessful)))
-                        self.write_to_log("Bad Password ({}): {}".format(p.returncode, item))
-                    else:
-                        success.append(destination+new_filename)
-                    # for line in p.stdout:
-                    #     print(line)
-#                    subprocess.check_output([program, '--decrypt', '--password={}'.format(passwd.text()), item, os.path.join(destination, new_filename)]) != 0):
-                        # self.completed += 1
-                        # progress.setValue(self.completed)
+                    passwd2.setEnabled(True)
+                except subprocess.CalledProcessError as e:
+                    if e.returncode == 1 or e.returncode == 2:
+                        self.write_to_log(e.output.decode())
                 except FileNotFoundError:
+                    # if qpdf binary cannot be found
                     self.not_found()
-        # put reading log file into a new func that uses threads
-        # so that we can use both decrypt and encrypt whilst displaying log file
-        open_log = open('log.txt', 'r')
+                else:
+                    self.write_to_log("{}: Success".format(os.path.join(destination, new_filename)))
+        open_log = open('output.log', 'r')
         logEdit.setPlainText(open_log.read())
         open_log.close()
-                # except subprocess.CalledProcessError as e:
-                #     if e.returncode == 2:
-                #         # append to list
-                #         unsuccessful.append(item)
-                # else:
-                #     success.append(destination+new_filename)
+
+    def write_to_log(self, text):
+        logging.basicConfig(filename="output.log", filemode='w', level=logging.INFO,
+                format='%(asctime)s:%(levelname)s:%(message)s', datefmt='%H:%M:%S')
+        logging.info(text)
+        """
+        with open('log.txt', 'w') as f:
+            f.write(text)
+        """
+    def decrypt_screen(self):
+        new_decrypt_screen = DecryptScreen(self)
+
+    def decrypt(self, passwd, okbtn, logEdit):
+        destination = default_output_dir
+        identifier = '(decry)'
+        itemsTextList = [str(self.listWidget.item(i).text()) for i in range(self.listWidget.count())]
+        if len(itemsTextList) == 0:
+            self.write_to_log("No files to decrypt")
+        else:
+            self.write_to_log("Decrypting...")
+            for item in itemsTextList:
+                new_file_path = Path(item)
+                suffix = new_file_path.suffix
+                new_filename = new_file_path.stem+identifier+suffix
+                try:
+                    subprocess.check_output([program, "--decrypt", "--password={}".format(passwd.text()), item, os.path.join(destination, new_filename)], stderr=subprocess.STDOUT).decode()
+                    okbtn.setEnabled(True)
+                    passwd.setEnabled(True)
+                except subprocess.CalledProcessError as e:
+                    if e.returncode == 1 or e.returncode == 2:
+                        # unsuccessful.append(item)
+                        # logEdit.setPlainText("Bad Password ({}) for:\n{}".format(p.returncode, "\n".join(unsuccessful)))
+                        # self.write_to_log("Bad Password ({}): {}".format(e.returncode, item))
+                        self.write_to_log(e.output.decode())
+                except FileNotFoundError:
+                    # if qpdf binary cannot be found
+                    self.not_found()
+                else:
+                    # success.append(destination+new_filename)
+                    self.write_to_log("{}: Success".format(os.path.join(destination, new_filename)))
+        # put reading log file into a new func that uses threads
+        # so that we can use both decrypt and encrypt whilst displaying log file
+        open_log = open('output.log', 'r')
+        logEdit.setPlainText(open_log.read())
+        open_log.close()
+        """
         if len(unsuccessful) > 0:
             self.show_dialog(icon=QMessageBox.Warning,
                              text="Bad Password for {} file(s):\n{}".format(len(unsuccessful), "\n".join(unsuccessful)),
@@ -383,6 +331,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
             self.show_dialog(icon=QMessageBox.Information,
                              text="{} pdf(s) successfully decrypted:\n{}".format(len(success), "\n".join(success)),
                              window_title="decrypt")
+        """
 
 
 def main():
