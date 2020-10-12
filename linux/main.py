@@ -201,7 +201,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
         # self.progress.setGeometry(200, 80, 250, 20)
 
     def open_folder(self):
-        directory = QFileDialog.getExistingDirectory(self, "Pick a folder",
+        directory = QFileDialog.getExistingDirectory(self, "Import folder",
                                                      default_open_loc)
         if directory:
             for file in os.listdir(directory):
@@ -210,7 +210,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
                     self.listWidget.addItem(filter)
 
     def add_file(self):
-        file, _ = QFileDialog.getOpenFileName(self, "Pick a file",
+        file, _ = QFileDialog.getOpenFileNames(self, "Import files",
                                               default_open_loc, filter='*.pdf')
         if file:
             self.listWidget.addItem(file)
