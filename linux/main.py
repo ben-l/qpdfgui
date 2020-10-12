@@ -213,7 +213,8 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
         file, _ = QFileDialog.getOpenFileNames(self, "Import files",
                                               default_open_loc, filter='*.pdf')
         if file:
-            self.listWidget.addItem(file)
+            for f in file:
+                self.listWidget.addItem(f)
 
     def remove_file(self):
         for SelectedItem in self.listWidget.selectedItems():

@@ -29,6 +29,15 @@ QListWidget::item:hover{
 QListWidget::item::selected{
 	background-color: #18ff94;
 	color: #1E1E1E;
+}
+
+QPushButton{
+background-color: #3E3E42;
+}
+
+QPushButton::hover{
+background-color: #18ff94;
+color: #1E1E1E;
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
