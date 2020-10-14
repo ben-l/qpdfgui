@@ -1,5 +1,5 @@
 from PyQt5.QtGui import QMovie, QPixmap, QIcon
-from PyQt5.QtCore import Qt, QTimer, QSize
+from PyQt5.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QFileDialog,
                              QInputDialog, QMessageBox, QLineEdit,
                              QCheckBox, QWidget, QProgressBar, QLabel,
@@ -7,14 +7,15 @@ from PyQt5.QtWidgets import (QMainWindow, QApplication, QFileDialog,
                              QHBoxLayout)
 from subprocess import Popen, PIPE
 from pathlib import Path
-import design
-import redesign
 import decrypt
+import design
 import encrypt
 import logging
 import os
+import redesign
 import subprocess
 import sys
+import time
 import threading
 
 
@@ -33,6 +34,18 @@ elif os.name == 'nt':
 # subprocess.call and check_call are blocking
 # (waits for the child process to return)
 # so we need to use threading
+TIME_LIMIT = 100
+
+class External(QThread):
+    countChanged = pyqtSignal(int)
+
+    def run(self):
+        count = 0
+        while count < TIME_LIMIT:
+            count += 1
+            time.sleep(1)
+            self.countChanged.emit(count)
+
 
 class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
     def __init__(self, parent=None):
@@ -127,6 +140,15 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                                                               "Pick a folder")
         if default_output_dir:
             self.outputDir.setText(default_output_dir)
+
+    def onButtonClick(self):
+        self.calc = External()
+        self.calc.countChanged.connect(self.onCountChanged)
+        self.calc.start()
+
+    def onCountChanged(self, value):
+        self.progressBar.setValue(value)
+
 
     def disable_btns(self):
         self.buttonOK.setEnabled(False)
@@ -239,6 +261,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
 
     def encrypt_screen(self):
         new_encrypt_screen = EncryptScreen(self)
+        print(new_encrypt_screen.password_shown)
 
     def encrypt(self, passwd, passwd2, okbtn, logEdit):
         destination = default_output_dir
@@ -262,6 +285,10 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
                 suffix = new_file_path.suffix
                 new_filename = new_file_path.stem+identifier+suffix
                 try:
+                    # self.calc = External()
+                    # self.calc.countChanged.connect(progressBar.setValue(75))
+                    # print(encrypt_screen.new_encrypt_screen.password_shown)
+                    # self.calc.start()
                     subprocess.check_output([program, '--encrypt', passwd.text(), passwd2.text(), '256', '--', item, os.path.join(destination, new_filename)],
                                             stderr=subprocess.STDOUT).decode()
                     okbtn.setEnabled(True)
