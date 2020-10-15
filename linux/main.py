@@ -34,17 +34,25 @@ elif os.name == 'nt':
 # subprocess.call and check_call are blocking
 # (waits for the child process to return)
 # so we need to use threading
-TIME_LIMIT = 100
+# TIME_LIMIT = 100
 
-class External(QThread):
+class WorkerThread(QThread):
     countChanged = pyqtSignal(int)
+    kill = False
+    stop = False
 
     def run(self):
+        # global stop
+        # global kill
         count = 0
-        while count < TIME_LIMIT:
-            count += 1
+        # while count < TIME_LIMIT:
+        while self.stop != True:
+            count += 10
+            print(count)
             time.sleep(1)
             self.countChanged.emit(count)
+            print(self.stop)
+        self.countChanged.emit(100)
 
 
 class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
@@ -142,12 +150,19 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
             self.outputDir.setText(default_output_dir)
 
     def onButtonClick(self):
-        self.calc = External()
-        self.calc.countChanged.connect(self.onCountChanged)
-        self.calc.start()
+        self.worker = WorkerThread()
+        self.worker.start()
+        self.worker.countChanged.connect(self.onCountChanged)
+        self.worker.finished.connect(self.evt_worker_finished)
+        return self.worker
+
+    def evt_worker_finished(self):
+        print("worker thread complete")
 
     def onCountChanged(self, value):
         self.progressBar.setValue(value)
+        self.progressBar.setProperty("value", value)
+        print(value)
 
     def disable_btns(self):
         self.buttonOK.setEnabled(False)
@@ -177,20 +192,24 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                 suffix = new_file_path.suffix
                 new_filename = new_file_path.stem+identifier+suffix
                 try:
-                    self.onButtonClick()
+                    self.progressBar.setProperty("value", 0)
                     subprocess.check_output([program, '--encrypt', passwd.text(), passwd2.text(), '256', '--', item, os.path.join(destination, new_filename)],
                                             stderr=subprocess.STDOUT).decode()
+                    start_progress = self.onButtonClick()
                     okbtn.setEnabled(True)
                     passwd.setEnabled(True)
                     passwd2.setEnabled(True)
                 except subprocess.CalledProcessError as e:
                     if e.returncode == 1 or e.returncode == 2:
+                        print(e)
+                        print(e.returncode)
                         self.parent.write_to_log(e.output.decode())
                 except FileNotFoundError:
                     # if qpdf binary cannot be found
                     self.not_found()
                 else:
                     self.parent.write_to_log("{}: Success".format(os.path.join(destination, new_filename)))
+                    start_progress.stop = True
         open_log = open('output.log', 'r')
         logEdit.setPlainText(open_log.read())
         open_log.close()
