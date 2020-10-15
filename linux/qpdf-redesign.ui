@@ -33,10 +33,13 @@ QListWidget::item::selected{
 
 QPushButton{
 background-color: #3E3E42;
+font-weight: bold;
+color: #ffffff
 }
 
 QPushButton::hover{
 background-color: #18ff94;
+font-weight: bold;
 color: #1E1E1E;
 }</string>
   </property>

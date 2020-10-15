@@ -149,12 +149,51 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
     def onCountChanged(self, value):
         self.progressBar.setValue(value)
 
-
     def disable_btns(self):
         self.buttonOK.setEnabled(False)
         self.btnPassword.setEnabled(False)
         self.btnPassword2.setEnabled(False)
-        self.parent.encrypt(self.btnPassword, self.btnPassword2, self.buttonOK, self.logEdit)
+        self.encrypt(self.btnPassword, self.btnPassword2, self.buttonOK, self.logEdit)
+
+    def encrypt(self, passwd, passwd2, okbtn, logEdit):
+        destination = default_output_dir
+        identifier = '(encry)'
+        logging.basicConfig(filename="output.log", filemode='w', level=logging.INFO,
+                            format='%(asctime)s:%(levelname)s:%(message)s', datefmt='%H:%M:%S')
+        # aes_choice = self.AESOption.activated[int]
+        # aes_choice = str(self.AESOption.currentText()).strip('AES-')
+        itemsTextList = [str(self.parent.listWidget.item(i).text()) for i in range(self.parent.listWidget.count())]
+        if passwd.text() != passwd2.text():
+            # self.write_to_log("Passwords do not match")
+            logging.info("Passwords do not match")
+            """
+            self.show_dialog(icon=QMessageBox.Warning,
+                             text="Passwords do not match. Try again",
+                             window_title="Encrypt")
+            """
+        elif passwd.text() == passwd2.text():
+            for item in itemsTextList:
+                new_file_path = Path(item)
+                suffix = new_file_path.suffix
+                new_filename = new_file_path.stem+identifier+suffix
+                try:
+                    self.onButtonClick()
+                    subprocess.check_output([program, '--encrypt', passwd.text(), passwd2.text(), '256', '--', item, os.path.join(destination, new_filename)],
+                                            stderr=subprocess.STDOUT).decode()
+                    okbtn.setEnabled(True)
+                    passwd.setEnabled(True)
+                    passwd2.setEnabled(True)
+                except subprocess.CalledProcessError as e:
+                    if e.returncode == 1 or e.returncode == 2:
+                        self.parent.write_to_log(e.output.decode())
+                except FileNotFoundError:
+                    # if qpdf binary cannot be found
+                    self.not_found()
+                else:
+                    self.parent.write_to_log("{}: Success".format(os.path.join(destination, new_filename)))
+        open_log = open('output.log', 'r')
+        logEdit.setPlainText(open_log.read())
+        open_log.close()
 
 
 
@@ -260,55 +299,14 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
                          window_title="Error")
 
     def encrypt_screen(self):
-        new_encrypt_screen = EncryptScreen(self)
-        print(new_encrypt_screen.password_shown)
-
-    def encrypt(self, passwd, passwd2, okbtn, logEdit):
-        destination = default_output_dir
-        identifier = '(encry)'
-        logging.basicConfig(filename="output.log", filemode='w', level=logging.INFO,
-                            format='%(asctime)s:%(levelname)s:%(message)s', datefmt='%H:%M:%S')
-        # aes_choice = self.AESOption.activated[int]
-        # aes_choice = str(self.AESOption.currentText()).strip('AES-')
-        itemsTextList = [str(self.listWidget.item(i).text()) for i in range(self.listWidget.count())]
-        if passwd.text() != passwd2.text():
-            # self.write_to_log("Passwords do not match")
-            logging.info("Passwords do not match")
-            """
-            self.show_dialog(icon=QMessageBox.Warning,
-                             text="Passwords do not match. Try again",
-                             window_title="Encrypt")
-            """
-        elif passwd.text() == passwd2.text():
-            for item in itemsTextList:
-                new_file_path = Path(item)
-                suffix = new_file_path.suffix
-                new_filename = new_file_path.stem+identifier+suffix
-                try:
-                    # self.calc = External()
-                    # self.calc.countChanged.connect(progressBar.setValue(75))
-                    # print(encrypt_screen.new_encrypt_screen.password_shown)
-                    # self.calc.start()
-                    subprocess.check_output([program, '--encrypt', passwd.text(), passwd2.text(), '256', '--', item, os.path.join(destination, new_filename)],
-                                            stderr=subprocess.STDOUT).decode()
-                    okbtn.setEnabled(True)
-                    passwd.setEnabled(True)
-                    passwd2.setEnabled(True)
-                except subprocess.CalledProcessError as e:
-                    if e.returncode == 1 or e.returncode == 2:
-                        self.write_to_log(e.output.decode())
-                except FileNotFoundError:
-                    # if qpdf binary cannot be found
-                    self.not_found()
-                else:
-                    self.write_to_log("{}: Success".format(os.path.join(destination, new_filename)))
-        open_log = open('output.log', 'r')
-        logEdit.setPlainText(open_log.read())
-        open_log.close()
+        self.new_encrypt_screen = EncryptScreen(self)
+        # return self.new_encrypt_screen
 
     def write_to_log(self, text):
-        logging.basicConfig(filename="output.log", filemode='w', level=logging.INFO,
-                format='%(asctime)s:%(levelname)s:%(message)s', datefmt='%H:%M:%S')
+        logging.basicConfig(filename="output.log", filemode='w',
+                            level=logging.INFO,
+                            format='%(asctime)s:%(levelname)s:%(message)s',
+                            datefmt='%H:%M:%S')
         logging.info(text)
         """
         with open('log.txt', 'w') as f:
