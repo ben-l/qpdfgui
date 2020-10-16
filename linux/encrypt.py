@@ -55,7 +55,7 @@ class Ui_encryptUI(object):
         self.progressBar.setStyleSheet("color {\n"
 "#000000\n"
 "}")
-        self.progressBar.setProperty("value", 10)
+        self.progressBar.setProperty("value", 0)
         self.progressBar.setAlignment(QtCore.Qt.AlignCenter)
         self.progressBar.setTextVisible(True)
         self.progressBar.setOrientation(QtCore.Qt.Horizontal)

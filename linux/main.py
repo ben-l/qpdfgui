@@ -18,6 +18,10 @@ import sys
 import time
 import threading
 
+class bcolors:
+    FAIL = '\033[91m'
+    OKGREEN = '\033[92m'
+
 
 if os.name == 'posix':
     #  linux os
@@ -30,6 +34,30 @@ elif os.name == 'nt':
     default_output_dir = os.path.expandvars(r'%USERPROFILE%\Downloads')
     program = 'qpdf.exe'
 
+
+class Logger:
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        self.formatter = logging.Formatter('%(asctime)s: %(levelname)s: %(message)s', datefmt='%H:%M:%S')
+
+        self.file_handler = logging.FileHandler('output.log', mode='w')
+        self.file_handler.setFormatter(self.formatter)
+
+        self.stream_handler = logging.StreamHandler(sys.stdout)
+
+        self.logger.addHandler(self.file_handler)
+        self.logger.addHandler(self.stream_handler)
+
+    def write_to_log(self, text, level):
+        if level.lower() == "error":
+            self.logger.error(text)
+        elif level.lower() == "info":
+            self.logger.info(text)
+
+    def delete_logger_handler(self):
+        for handler in self.logger.handlers[:]:
+            self.logger.removeHandler(handler)
 
 # subprocess.call and check_call are blocking
 # (waits for the child process to return)
@@ -89,7 +117,7 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
 
     def change_outputdir(self):
         default_output_dir = QFileDialog.getExistingDirectory(self,
-                                                              "Pick a folder")
+                                                              "Choose Output Directory", default_open_loc)
         if default_output_dir:
             self.outputDir.setText(default_output_dir)
 
@@ -126,6 +154,7 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.password_shown = False
 
         self.show()
+        self.log_inst = Logger()
 
     def show_password(self):
         if not self.password_shown:
@@ -145,7 +174,7 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
 
     def change_outputdir(self):
         default_output_dir = QFileDialog.getExistingDirectory(self,
-                                                              "Pick a folder")
+                                                              "Choose Output Directory", default_open_loc)
         if default_output_dir:
             self.outputDir.setText(default_output_dir)
 
@@ -171,16 +200,21 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.encrypt(self.btnPassword, self.btnPassword2, self.buttonOK, self.logEdit)
 
     def encrypt(self, passwd, passwd2, okbtn, logEdit):
+        self.log_inst.delete_logger_handler()
+        self.log_inst= Logger()
+        self.progressBar.setProperty("value", 0)
+        successful = []
+        errors = 0
         destination = default_output_dir
         identifier = '(encry)'
-        logging.basicConfig(filename="output.log", filemode='w', level=logging.INFO,
-                            format='%(asctime)s:%(levelname)s:%(message)s', datefmt='%H:%M:%S')
+
+
         # aes_choice = self.AESOption.activated[int]
         # aes_choice = str(self.AESOption.currentText()).strip('AES-')
         itemsTextList = [str(self.parent.listWidget.item(i).text()) for i in range(self.parent.listWidget.count())]
         if passwd.text() != passwd2.text():
-            # self.write_to_log("Passwords do not match")
-            logging.info("Passwords do not match")
+            successful.append(1)
+            self.log_inst.write_to_log("Passwords do not match", "error")
             """
             self.show_dialog(icon=QMessageBox.Warning,
                              text="Passwords do not match. Try again",
@@ -192,24 +226,26 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                 suffix = new_file_path.suffix
                 new_filename = new_file_path.stem+identifier+suffix
                 try:
-                    self.progressBar.setProperty("value", 0)
                     subprocess.check_output([program, '--encrypt', passwd.text(), passwd2.text(), '256', '--', item, os.path.join(destination, new_filename)],
                                             stderr=subprocess.STDOUT).decode()
-                    start_progress = self.onButtonClick()
+                    #start_progress = self.onButtonClick()
                     okbtn.setEnabled(True)
                     passwd.setEnabled(True)
                     passwd2.setEnabled(True)
                 except subprocess.CalledProcessError as e:
+                    successful.append(1)
                     if e.returncode == 1 or e.returncode == 2:
-                        print(e)
-                        print(e.returncode)
-                        self.parent.write_to_log(e.output.decode())
+                        # print(e)
+                        # print(e.returncode)
+                        self.log_inst.write_to_log(e.output.decode(), "error")
                 except FileNotFoundError:
                     # if qpdf binary cannot be found
+                    successful.append(1)
                     self.not_found()
                 else:
-                    self.parent.write_to_log("{}: Success".format(os.path.join(destination, new_filename)))
-                    start_progress.stop = True
+                    successful.append(0)
+                    self.log_inst.write_to_log("{}: Success".format(os.path.join(destination, new_filename)), "info")
+                    #start_progress.stop = True
         open_log = open('output.log', 'r')
         logEdit.setPlainText(open_log.read())
         open_log.close()
@@ -321,16 +357,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
         self.new_encrypt_screen = EncryptScreen(self)
         # return self.new_encrypt_screen
 
-    def write_to_log(self, text):
-        logging.basicConfig(filename="output.log", filemode='w',
-                            level=logging.INFO,
-                            format='%(asctime)s:%(levelname)s:%(message)s',
-                            datefmt='%H:%M:%S')
-        logging.info(text)
-        """
-        with open('log.txt', 'w') as f:
-            f.write(text)
-        """
+
     def decrypt_screen(self):
         new_decrypt_screen = DecryptScreen(self)
 
@@ -339,9 +366,9 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
         identifier = '(decry)'
         itemsTextList = [str(self.listWidget.item(i).text()) for i in range(self.listWidget.count())]
         if len(itemsTextList) == 0:
-            self.write_to_log("No files to decrypt")
+            self.log_inst.write_to_log("No files to decrypt")
         else:
-            self.write_to_log("Decrypting...")
+            self.log_inst.write_to_log("Decrypting...")
             for item in itemsTextList:
                 new_file_path = Path(item)
                 suffix = new_file_path.suffix
