@@ -54,6 +54,8 @@ class Logger:
             self.logger.error(text)
         elif level.lower() == "info":
             self.logger.info(text)
+        elif level.lower() == "warning":
+            self.logger.warning(text)
 
     def delete_logger_handler(self):
         for handler in self.logger.handlers[:]:
@@ -208,13 +210,12 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
     def encrypt(self, passwd, passwd2, okbtn, logEdit):
         self.log_inst.delete_logger_handler()
         self.log_inst= Logger()
+        logEdit.clear()
         self.progressBar.setProperty("value", 0)
         successful = []
         errors = 0
         destination = default_output_dir
         identifier = '(encry)'
-
-
         # aes_choice = self.AESOption.activated[int]
         # aes_choice = str(self.AESOption.currentText()).strip('AES-')
         itemsTextList = [str(self.parent.listWidget.item(i).text()) for i in range(self.parent.listWidget.count())]
@@ -234,18 +235,23 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                 try:
                     subprocess.check_output([program, '--encrypt', passwd.text(), passwd2.text(), '256', '--', item, os.path.join(destination, new_filename)],
                                             stderr=subprocess.STDOUT).decode()
-                    #start_progress = self.onButtonClick()
+                    # start_progress = self.onButtonClick()
                 except subprocess.CalledProcessError as e:
-                    print(e.returncode)
+                    print("error returncode: {}".format(e.returncode))
                     if e.returncode == 1 or e.returncode == 2:
                         successful.append(1)
                         self.log_inst.write_to_log(e.output.decode(), "error")
-                    # just a warning
+                    # just a warning may be related to stream output
                     elif e.returncode == 3:
-                        print(e.output.decode())
+                        lines = e.output.decode().split("\n")
+                        print(lines[-3])
+                        # cut off the last line as logger already has a warning
+                        # need to fix
+                        log_output = "{}".format(os.path.join(destination, new_filename)) + ": " + lines[-2]
+                        self.log_inst.write_to_log(log_output, "warning")
                         pass
                 except subprocess.SubprocessError as e:
-                    print(e.returncode, e.output)
+                    self.log_inst.write_to_log(e.output.decode(), "error")
                 except FileNotFoundError:
                     # if qpdf binary cannot be found
                     successful.append(1)
@@ -253,7 +259,7 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                 else:
                     successful.append(0)
                     self.log_inst.write_to_log("{}: Success".format(os.path.join(destination, new_filename)), "info")
-                    #start_progress.stop = True
+                    # start_progress.stop = True
         open_log = open('output.log', 'r')
         logEdit.setPlainText(open_log.read())
         open_log.close()
