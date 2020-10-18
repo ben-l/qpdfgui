@@ -77,7 +77,7 @@ class WorkerThread(QThread):
         while self.stop != True:
             count += 10
             print(count)
-            time.sleep(1)
+            time.sleep(.2)
             self.countChanged.emit(count)
             print(self.stop)
         self.countChanged.emit(100)
@@ -156,6 +156,12 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.show()
         self.log_inst = Logger()
 
+        # for testing
+        itemsTextList = [str(self.parent.listWidget.item(i).text()) for i in range(self.parent.listWidget.count())]
+        for item in itemsTextList:
+            print(item)
+
+
     def show_password(self):
         if not self.password_shown:
             self.btnPassword.setEchoMode(QLineEdit.Normal)
@@ -229,15 +235,17 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                     subprocess.check_output([program, '--encrypt', passwd.text(), passwd2.text(), '256', '--', item, os.path.join(destination, new_filename)],
                                             stderr=subprocess.STDOUT).decode()
                     #start_progress = self.onButtonClick()
-                    okbtn.setEnabled(True)
-                    passwd.setEnabled(True)
-                    passwd2.setEnabled(True)
                 except subprocess.CalledProcessError as e:
-                    successful.append(1)
+                    print(e.returncode)
                     if e.returncode == 1 or e.returncode == 2:
-                        # print(e)
-                        # print(e.returncode)
+                        successful.append(1)
                         self.log_inst.write_to_log(e.output.decode(), "error")
+                    # just a warning
+                    elif e.returncode == 3:
+                        print(e.output.decode())
+                        pass
+                except subprocess.SubprocessError as e:
+                    print(e.returncode, e.output)
                 except FileNotFoundError:
                     # if qpdf binary cannot be found
                     successful.append(1)
@@ -249,6 +257,9 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         open_log = open('output.log', 'r')
         logEdit.setPlainText(open_log.read())
         open_log.close()
+        okbtn.setEnabled(True)
+        passwd.setEnabled(True)
+        passwd2.setEnabled(True)
 
 
 
@@ -317,7 +328,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
         # self.progress.setGeometry(200, 80, 250, 20)
 
     def open_folder(self):
-        directory = QFileDialog.getExistingDirectory(self, "Import folder",
+        directory = QFileDialog.getExistingDirectory(self, "Import Folder",
                                                      default_open_loc)
         if directory:
             for file in os.listdir(directory):
@@ -326,7 +337,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
                     self.listWidget.addItem(filter)
 
     def add_file(self):
-        file, _ = QFileDialog.getOpenFileNames(self, "Import files",
+        file, _ = QFileDialog.getOpenFileNames(self, "Import Files",
                                               default_open_loc, filter='*.pdf')
         if file:
             for f in file:
@@ -350,7 +361,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
 
     def not_found(self):
         self.show_dialog(icon=QMessageBox.Warning,
-                         text="QPDF Not found. Please install",
+                         text="QPDF Not Found. Please Install",
                          window_title="Error")
 
     def encrypt_screen(self):
@@ -388,7 +399,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
                     self.not_found()
                 else:
                     # success.append(destination+new_filename)
-                    self.write_to_log("{}: Success".format(os.path.join(destination, new_filename)))
+                    self.write_to_log("{}: decrypted".format(os.path.join(destination, new_filename)))
         # put reading log file into a new func that uses threads
         # so that we can use both decrypt and encrypt whilst displaying log file
         open_log = open('output.log', 'r')
