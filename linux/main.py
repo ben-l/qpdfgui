@@ -261,9 +261,9 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                     self.log_inst.write_to_log("{}: Success".format(os.path.join(destination, new_filename)), "info")
                     # start_progress.stop = True
             # after the for each item statement print the log
-            open_log = open('output.log', 'r')
-            logEdit.setPlainText(open_log.read())
-            open_log.close()
+                open_log = open('output.log', 'r')
+                logEdit.setPlainText(open_log.read())
+                open_log.close()
         okbtn.setEnabled(True)
         passwd.setEnabled(True)
         passwd2.setEnabled(True)
