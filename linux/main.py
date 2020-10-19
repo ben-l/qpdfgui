@@ -238,45 +238,30 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                 new_file_path = Path(item)
                 suffix = new_file_path.suffix
                 new_filename = new_file_path.stem+identifier+suffix
-                try:
-                    subprocess.check_output([program, '--encrypt', passwd.text(), passwd2.text(), '256', '--', item, os.path.join(destination, new_filename)],
-                                            stderr=subprocess.STDOUT).decode()
-                    # start_progress = self.onButtonClick()
-                except subprocess.CalledProcessError as e:
-                    print("error returncode: {}".format(e.returncode))
-                    # @TODO:
-                    # Debating whether to just put all the error output into
-                    # the log box rather than stripping specific segments
-                    if e.returncode == 1 or e.returncode == 2:
-                        successful.append(1)
-                        warning_2 = e.output.decode().split("\r")
-                        warning_output = warning_2[0].strip()
-                        self.log_inst.write_to_log(warning_output, "warning")
-                    # just a warning may be related to stream output
-                    # need to fix whole return code 3 segment as its only
-                    # put together for stream error
-                    # could produce unstable results for other warnings
-                    elif e.returncode == 3:
-                        # split by carriage return
-                        lines = e.output.decode().split("\r")
-                        # need to fix
-                        output = lines[-3:]
-                        # & strip the newline characters
-                        final_output = output[0][:].strip() + ": " + output[1].strip()
-                        log_output = "{}".format(final_output)
-                        self.log_inst.write_to_log(log_output, "warning")
-                        pass
-                except subprocess.SubprocessError as e:
-                    self.log_inst.write_to_log(e.output.decode(), "error")
-                except FileNotFoundError:
-                    # if qpdf binary cannot be found
-                    successful.append(1)
-                    self.not_found()
-                else:
-                    successful.append(0)
-                    self.log_inst.write_to_log("SUCCESS: {}".format(os.path.join(destination, new_filename)), "info")
-                    # start_progress.stop = True
-                # after the for each item statement print the log
+                process = subprocess.Popen([program, '--encrypt', self.btnPassword.text(), self.btnPassword2.text(), '256', '--', item, os.path.join(destination, new_filename), '--progress'],
+                                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                while True:
+                    # the process will hang because output is a byte array
+                    # make sure to decode readline
+                    output = process.stdout.readline().decode()
+                    if output == '' and process.poll() is not None:
+                        break
+                    if output:
+                        print(output.strip())
+                rc = process.poll()
+                # print(rc)
+                # return rc
+                if rc == 1 or rc == 2:
+                    print("rc errors")
+                    self.log_inst.write_to_log("errors", "error")
+                # just a warning may be related to stream output
+                # need to fix whole return code 3 segment as its only
+                # put together for stream error
+                # could produce unstable results for other warnings
+                elif rc == 3:
+                    print("rc warnings")
+                    self.log_inst.write_to_log("warnings", "warning")
+                    pass
                 open_log = open('output.log', 'r')
                 logEdit.setPlainText(open_log.read())
                 open_log.close()
