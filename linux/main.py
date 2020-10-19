@@ -39,7 +39,7 @@ class Logger:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
-        self.formatter = logging.Formatter('%(asctime)s: %(levelname)s: %(message)s', datefmt='%H:%M:%S')
+        self.formatter = logging.Formatter('%(asctime)s: %(message)s', datefmt='%H:%M:%S')
 
         self.file_handler = logging.FileHandler('output.log', mode='w')
         self.file_handler.setFormatter(self.formatter)
@@ -130,17 +130,21 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
 
 
 class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
+    # resize for testing
     def __init__(self, parent=None):
         QDialog.__init__(self, parent)
         self.setupUi(self)
         self.parent = parent
-        self.resize(520, 280)
+        # this gets sized in encrypt.py
+        # and then resized here - need to change
+        self.resize(737, 441)
         self.outputDir.setText(default_output_dir)
         self.changeDir.clicked.connect(self.change_outputdir)
         self.btnPassword.setEchoMode(QLineEdit.Password)
         self.btnPassword2.setEchoMode(QLineEdit.Password)
         self.buttonOK.clicked.connect(self.disable_btns)
         self.buttonClose.clicked.connect(self.close)
+        # resize for testing func
         # self.setWindowModality(Qt.ApplicationModal)
         self.setWindowTitle("Encrypt")
         # show password
@@ -158,10 +162,12 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.show()
         self.log_inst = Logger()
 
-        # for testing
-        itemsTextList = [str(self.parent.listWidget.item(i).text()) for i in range(self.parent.listWidget.count())]
-        for item in itemsTextList:
-            print(item)
+        # resize window for testing
+    def resizeEvent(self, event):
+        print("resize")
+        print("Width: {}".format(event.size().width()))
+        print("Height: {}".format(event.size().height()))
+
 
 
     def show_password(self):
@@ -208,9 +214,9 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.encrypt(self.btnPassword, self.btnPassword2, self.buttonOK, self.logEdit)
 
     def encrypt(self, passwd, passwd2, okbtn, logEdit):
+        logEdit.clear()
         self.log_inst.delete_logger_handler()
         self.log_inst= Logger()
-        logEdit.clear()
         self.progressBar.setProperty("value", 0)
         successful = []
         errors = 0
@@ -238,16 +244,26 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                     # start_progress = self.onButtonClick()
                 except subprocess.CalledProcessError as e:
                     print("error returncode: {}".format(e.returncode))
+                    # @TODO:
+                    # Debating whether to just put all the error output into
+                    # the log box rather than stripping specific segments
                     if e.returncode == 1 or e.returncode == 2:
                         successful.append(1)
-                        self.log_inst.write_to_log(e.output.decode(), "error")
+                        warning_2 = e.output.decode().split("\r")
+                        warning_output = warning_2[0].strip()
+                        self.log_inst.write_to_log(warning_output, "warning")
                     # just a warning may be related to stream output
+                    # need to fix whole return code 3 segment as its only
+                    # put together for stream error
+                    # could produce unstable results for other warnings
                     elif e.returncode == 3:
-                        lines = e.output.decode().split("\n")
-                        print(lines[-3])
-                        # cut off the last line as logger already has a warning
+                        # split by carriage return
+                        lines = e.output.decode().split("\r")
                         # need to fix
-                        log_output = "{}".format(os.path.join(destination, new_filename)) + ": " + lines[-2]
+                        output = lines[-3:]
+                        # & strip the newline characters
+                        final_output = output[0][:].strip() + ": " + output[1].strip()
+                        log_output = "{}".format(final_output)
                         self.log_inst.write_to_log(log_output, "warning")
                         pass
                 except subprocess.SubprocessError as e:
@@ -258,9 +274,9 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                     self.not_found()
                 else:
                     successful.append(0)
-                    self.log_inst.write_to_log("{}: Success".format(os.path.join(destination, new_filename)), "info")
+                    self.log_inst.write_to_log("SUCCESS: {}".format(os.path.join(destination, new_filename)), "info")
                     # start_progress.stop = True
-            # after the for each item statement print the log
+                # after the for each item statement print the log
                 open_log = open('output.log', 'r')
                 logEdit.setPlainText(open_log.read())
                 open_log.close()
