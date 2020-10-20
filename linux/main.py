@@ -1,5 +1,5 @@
 from PyQt5.QtGui import QMovie, QPixmap, QIcon
-from PyQt5.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal, QObject
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QFileDialog,
                              QInputDialog, QMessageBox, QLineEdit,
                              QCheckBox, QWidget, QProgressBar, QLabel,
@@ -13,6 +13,7 @@ import encrypt
 import logging
 import os
 import redesign
+import shlex
 import subprocess
 import sys
 import time
@@ -34,8 +35,7 @@ elif os.name == 'nt':
     default_output_dir = os.path.expandvars(r'%USERPROFILE%\Downloads')
     program = 'qpdf.exe'
 
-
-class Logger:
+class OldLogger():
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -43,11 +43,7 @@ class Logger:
 
         self.file_handler = logging.FileHandler('output.log', mode='w')
         self.file_handler.setFormatter(self.formatter)
-
-        self.stream_handler = logging.StreamHandler(sys.stdout)
-
         self.logger.addHandler(self.file_handler)
-        self.logger.addHandler(self.stream_handler)
 
     def write_to_log(self, text, level):
         if level.lower() == "error":
@@ -60,6 +56,35 @@ class Logger:
     def delete_logger_handler(self):
         for handler in self.logger.handlers[:]:
             self.logger.removeHandler(handler)
+
+
+class Log(object):
+    def __init__(self, edit):
+        self.out = sys.stdout
+        self.textEdit = edit
+
+    def write(self, message):
+        self.out.write(message)
+        self.textEdit.appendPlainText(message)
+
+    def flush(self):
+        self.out.flush()
+
+
+class Logger(logging.Handler, QObject):
+    appendPlainText = pyqtSignal(str)
+    def __init__(self, parent):
+        super().__init__()
+        QObject.__init__(self)
+        self.parent = parent
+
+        self.widget = self.parent.logEdit
+        self.appendPlainText.connect(self.widget.appendPlainText)
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.appendPlainText.emit(msg)
+
 
 # subprocess.call and check_call are blocking
 # (waits for the child process to return)
@@ -130,6 +155,7 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
 
 
 class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
+    appendSignal = pyqtSignal(str)
     # resize for testing
     def __init__(self, parent=None):
         QDialog.__init__(self, parent)
@@ -160,7 +186,13 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.password_shown = False
 
         self.show()
-        self.log_inst = Logger()
+        # create new instance of Logger
+        # which is then destroyed when clicking encrypt
+        # after which another instance is created
+        # to ensure logs are refreshed everytime user clicks encrypt
+        # and for everytime user closes and reopens encrypt screen
+
+        # self.log_inst = Logger(self)
 
         # resize window for testing
     def resizeEvent(self, event):
@@ -211,63 +243,59 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.buttonOK.setEnabled(False)
         self.btnPassword.setEnabled(False)
         self.btnPassword2.setEnabled(False)
-        self.encrypt(self.btnPassword, self.btnPassword2, self.buttonOK, self.logEdit)
+        self.encrypt(self.btnPassword, self.btnPassword2, self.logEdit)
 
-    def encrypt(self, passwd, passwd2, okbtn, logEdit):
-        logEdit.clear()
-        self.log_inst.delete_logger_handler()
-        self.log_inst= Logger()
+    def renable_btns(self):
+        self.buttonOK.setEnabled(True)
+        self.btnPassword.setEnabled(True)
+        self.btnPassword2.setEnabled(True)
+
+    def reallyAppendToTextEdit(self, txt):
+        self.logEdit.appendPlainText(txt)
+
+    def runcmd(self, *cmd):
+        process = subprocess.Popen([*cmd], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        while True:
+            # the process will hang because output is a byte array
+            # make sure to decode readline
+            output = process.stdout.readline().decode()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                self.appendToTextEdit(output.strip())
+        rc = process.poll()
+        if rc == 1 or rc == 2:
+            # these are errors
+            pass
+        elif rc == 3:
+            # these are warnings, safe to ignore
+            pass
+
+    def encrypt(self, passwd, passwd2, logEdit):
+        self.logEdit.clear()
+        self.appendSignal.connect(self.reallyAppendToTextEdit)
+        self.appendToTextEdit = self.appendSignal.emit
+
         self.progressBar.setProperty("value", 0)
         successful = []
         errors = 0
+
         destination = default_output_dir
         identifier = '(encry)'
         # aes_choice = self.AESOption.activated[int]
         # aes_choice = str(self.AESOption.currentText()).strip('AES-')
         itemsTextList = [str(self.parent.listWidget.item(i).text()) for i in range(self.parent.listWidget.count())]
         if passwd.text() != passwd2.text():
+            self.logEdit.appendPlainText("ERROR: Passwords do not match")
             successful.append(1)
-            self.log_inst.write_to_log("Passwords do not match", "error")
-            """
-            self.show_dialog(icon=QMessageBox.Warning,
-                             text="Passwords do not match. Try again",
-                             window_title="Encrypt")
-            """
         elif passwd.text() == passwd2.text():
             for item in itemsTextList:
                 new_file_path = Path(item)
                 suffix = new_file_path.suffix
                 new_filename = new_file_path.stem+identifier+suffix
-                process = subprocess.Popen([program, '--encrypt', self.btnPassword.text(), self.btnPassword2.text(), '256', '--', item, os.path.join(destination, new_filename), '--progress'],
-                                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                while True:
-                    # the process will hang because output is a byte array
-                    # make sure to decode readline
-                    output = process.stdout.readline().decode()
-                    if output == '' and process.poll() is not None:
-                        break
-                    if output:
-                        print(output.strip())
-                rc = process.poll()
-                # print(rc)
-                # return rc
-                if rc == 1 or rc == 2:
-                    print("rc errors")
-                    self.log_inst.write_to_log("errors", "error")
-                # just a warning may be related to stream output
-                # need to fix whole return code 3 segment as its only
-                # put together for stream error
-                # could produce unstable results for other warnings
-                elif rc == 3:
-                    print("rc warnings")
-                    self.log_inst.write_to_log("warnings", "warning")
-                    pass
-                open_log = open('output.log', 'r')
-                logEdit.setPlainText(open_log.read())
-                open_log.close()
-        okbtn.setEnabled(True)
-        passwd.setEnabled(True)
-        passwd2.setEnabled(True)
+                self.thread1 = threading.Thread(target = self.runcmd, args = ("qpdf", "--encrypt", self.btnPassword.text(), self.btnPassword2.text(), "256", "--", item, os.path.join(destination, new_filename), "--progress",))
+                self.thread1.start()
+        self.renable_btns()
 
 
 
@@ -385,9 +413,10 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
         identifier = '(decry)'
         itemsTextList = [str(self.listWidget.item(i).text()) for i in range(self.listWidget.count())]
         if len(itemsTextList) == 0:
-            self.log_inst.write_to_log("No files to decrypt")
+            # self.log_inst.write_to_log("No files to decrypt")
+            pass
         else:
-            self.log_inst.write_to_log("Decrypting...")
+            #self.log_inst.write_to_log("Decrypting...")
             for item in itemsTextList:
                 new_file_path = Path(item)
                 suffix = new_file_path.suffix
