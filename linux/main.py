@@ -1,5 +1,5 @@
 from PyQt5.QtGui import QMovie, QPixmap, QIcon
-from PyQt5.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal, QObject
+from PyQt5.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal, QObject, QProcess
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QFileDialog,
                              QInputDialog, QMessageBox, QLineEdit,
                              QCheckBox, QWidget, QProgressBar, QLabel,
@@ -12,6 +12,7 @@ import design
 import encrypt
 import logging
 import os
+import queue
 import redesign
 import shlex
 import subprocess
@@ -258,6 +259,7 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         while True:
             # the process will hang because output is a byte array
             # make sure to decode readline
+            print(process.stdin)
             output = process.stdout.readline().decode()
             if output == '' and process.poll() is not None:
                 break
@@ -271,6 +273,17 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
             # these are warnings, safe to ignore
             pass
 
+    def test_print(self):
+        for i in range(50):
+            print("THREAD TET: {}".format(i))
+            time.sleep(1)
+
+    def test_print2(self):
+        for i in range(50):
+            print("THREAD TEsT 2: {}".format(i))
+            time.sleep(1)
+
+
     def encrypt(self, passwd, passwd2, logEdit):
         self.logEdit.clear()
         self.appendSignal.connect(self.reallyAppendToTextEdit)
@@ -280,11 +293,16 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         successful = []
         errors = 0
 
+        self.process = QProcess(self)
+        self.process.readyRead.connect(self.dataReady)
+
         destination = default_output_dir
         identifier = '(encry)'
         # aes_choice = self.AESOption.activated[int]
         # aes_choice = str(self.AESOption.currentText()).strip('AES-')
         itemsTextList = [str(self.parent.listWidget.item(i).text()) for i in range(self.parent.listWidget.count())]
+        threads = []
+
         if passwd.text() != passwd2.text():
             self.logEdit.appendPlainText("ERROR: Passwords do not match")
             successful.append(1)
@@ -294,7 +312,9 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                 suffix = new_file_path.suffix
                 new_filename = new_file_path.stem+identifier+suffix
                 self.thread1 = threading.Thread(target = self.runcmd, args = ("qpdf", "--encrypt", self.btnPassword.text(), self.btnPassword2.text(), "256", "--", item, os.path.join(destination, new_filename), "--progress",))
+                self.thread1.daemon = True
                 self.thread1.start()
+                self.thread1.join()
         self.renable_btns()
 
 
