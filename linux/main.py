@@ -1,5 +1,5 @@
 from PyQt5.QtGui import QMovie, QPixmap, QIcon
-from PyQt5.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal, QObject, QProcess
+from PyQt5.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal, QObject
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QFileDialog,
                              QInputDialog, QMessageBox, QLineEdit,
                              QCheckBox, QWidget, QProgressBar, QLabel,
@@ -164,7 +164,7 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.parent = parent
         # this gets sized in encrypt.py
         # and then resized here - need to change
-        self.resize(737, 441)
+        self.resize(800, 443)
         self.outputDir.setText(default_output_dir)
         self.changeDir.clicked.connect(self.change_outputdir)
         self.btnPassword.setEchoMode(QLineEdit.Password)
@@ -185,6 +185,11 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.reveal.triggered.connect(self.show_password)
         self.reveal2.triggered.connect(self.show_password2)
         self.password_shown = False
+
+        # Threads
+        self.maxthreads = 1
+        self.sema = threading.Semaphore(value=self.maxthreads)
+        self.threads = []
 
         self.show()
         # create new instance of Logger
@@ -255,16 +260,18 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.logEdit.appendPlainText(txt)
 
     def runcmd(self, *cmd):
-        process = subprocess.Popen([*cmd], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.sema.acquire()
+        process = subprocess.Popen([*cmd], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf8')
         while True:
             # the process will hang because output is a byte array
             # make sure to decode readline
-            print(process.stdin)
-            output = process.stdout.readline().decode()
+            output = process.stdout.readline()
             if output == '' and process.poll() is not None:
                 break
             if output:
                 self.appendToTextEdit(output.strip())
+                # print(output.strip())
+        self.sema.release()
         rc = process.poll()
         if rc == 1 or rc == 2:
             # these are errors
@@ -272,16 +279,6 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         elif rc == 3:
             # these are warnings, safe to ignore
             pass
-
-    def test_print(self):
-        for i in range(50):
-            print("THREAD TET: {}".format(i))
-            time.sleep(1)
-
-    def test_print2(self):
-        for i in range(50):
-            print("THREAD TEsT 2: {}".format(i))
-            time.sleep(1)
 
 
     def encrypt(self, passwd, passwd2, logEdit):
@@ -293,18 +290,14 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         successful = []
         errors = 0
 
-        self.process = QProcess(self)
-        self.process.readyRead.connect(self.dataReady)
-
         destination = default_output_dir
         identifier = '(encry)'
         # aes_choice = self.AESOption.activated[int]
         # aes_choice = str(self.AESOption.currentText()).strip('AES-')
         itemsTextList = [str(self.parent.listWidget.item(i).text()) for i in range(self.parent.listWidget.count())]
-        threads = []
-
         if passwd.text() != passwd2.text():
             self.logEdit.appendPlainText("ERROR: Passwords do not match")
+            self.renable_btns()
             successful.append(1)
         elif passwd.text() == passwd2.text():
             for item in itemsTextList:
@@ -314,8 +307,8 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                 self.thread1 = threading.Thread(target = self.runcmd, args = ("qpdf", "--encrypt", self.btnPassword.text(), self.btnPassword2.text(), "256", "--", item, os.path.join(destination, new_filename), "--progress",))
                 self.thread1.daemon = True
                 self.thread1.start()
-                self.thread1.join()
-        self.renable_btns()
+            print(threading.enumerate())
+        # self.renable_btns()
 
 
 
