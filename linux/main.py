@@ -171,6 +171,7 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.btnPassword2.setEchoMode(QLineEdit.Password)
         self.buttonOK.clicked.connect(self.disable_btns)
         self.buttonClose.clicked.connect(self.close)
+        self.appendSignal.connect(self.reallyAppendToTextEdit)
         # resize for testing func
         # self.setWindowModality(Qt.ApplicationModal)
         self.setWindowTitle("Encrypt")
@@ -246,10 +247,10 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         print(value)
 
     def disable_btns(self):
-        self.buttonOK.setEnabled(False)
-        self.btnPassword.setEnabled(False)
-        self.btnPassword2.setEnabled(False)
-        self.encrypt(self.btnPassword, self.btnPassword2, self.logEdit)
+        # self.buttonOK.setEnabled(False)
+        # self.btnPassword.setEnabled(False)
+        # self.btnPassword2.setEnabled(False)
+        self.encrypt(self.btnPassword, self.btnPassword2)
 
     def renable_btns(self):
         self.buttonOK.setEnabled(True)
@@ -269,8 +270,9 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
             if output == '' and process.poll() is not None:
                 break
             if output:
+                self.appendToTextEdit = self.appendSignal.emit
                 self.appendToTextEdit(output.strip())
-                # print(output.strip())
+                print(output.strip())
         self.sema.release()
         rc = process.poll()
         if rc == 1 or rc == 2:
@@ -281,10 +283,8 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
             pass
 
 
-    def encrypt(self, passwd, passwd2, logEdit):
+    def encrypt(self, passwd, passwd2):
         self.logEdit.clear()
-        self.appendSignal.connect(self.reallyAppendToTextEdit)
-        self.appendToTextEdit = self.appendSignal.emit
 
         self.progressBar.setProperty("value", 0)
         successful = []
@@ -296,7 +296,7 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         # aes_choice = str(self.AESOption.currentText()).strip('AES-')
         itemsTextList = [str(self.parent.listWidget.item(i).text()) for i in range(self.parent.listWidget.count())]
         if passwd.text() != passwd2.text():
-            self.logEdit.appendPlainText("ERROR: Passwords do not match")
+            self.logEdit.insertPlainText("ERROR: Passwords do not match")
             self.renable_btns()
             successful.append(1)
         elif passwd.text() == passwd2.text():
