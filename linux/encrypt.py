@@ -12,6 +12,9 @@ class Ui_encryptUI(object):
     def setupUi(self, encryptUI):
         encryptUI.setObjectName("encryptUI")
         encryptUI.resize(772, 588)
+        encryptUI.setStyleSheet("QPlainTextEdit{\n"
+"line-height: 1.6;\n"
+"}")
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(encryptUI)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
@@ -45,24 +48,9 @@ class Ui_encryptUI(object):
         self.verticalLayout.addWidget(self.btnPassword2)
         self.logEdit = QtWidgets.QPlainTextEdit(encryptUI)
         self.logEdit.setReadOnly(True)
+        self.logEdit.setPlainText("")
         self.logEdit.setObjectName("logEdit")
         self.verticalLayout.addWidget(self.logEdit)
-        self.progressBar = QtWidgets.QProgressBar(encryptUI)
-        font = QtGui.QFont()
-        font.setBold(True)
-        font.setWeight(75)
-        self.progressBar.setFont(font)
-        self.progressBar.setStyleSheet("color {\n"
-"#000000\n"
-"}")
-        self.progressBar.setProperty("value", 0)
-        self.progressBar.setAlignment(QtCore.Qt.AlignCenter)
-        self.progressBar.setTextVisible(True)
-        self.progressBar.setOrientation(QtCore.Qt.Horizontal)
-        self.progressBar.setInvertedAppearance(False)
-        self.progressBar.setTextDirection(QtWidgets.QProgressBar.TopToBottom)
-        self.progressBar.setObjectName("progressBar")
-        self.verticalLayout.addWidget(self.progressBar)
         self.buttonOK = QtWidgets.QPushButton(encryptUI)
         self.buttonOK.setObjectName("buttonOK")
         self.verticalLayout.addWidget(self.buttonOK)

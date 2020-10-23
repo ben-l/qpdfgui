@@ -25,90 +25,6 @@ class bcolors:
     OKGREEN = '\033[92m'
 
 
-if os.name == 'posix':
-    #  linux os
-    default_open_loc = os.path.expanduser('~/')
-    default_output_dir = os.path.expanduser('~/Downloads')
-    program = 'qpdf'
-elif os.name == 'nt':
-    # windows os
-    default_open_loc = os.path.expandvars(r'%USERPROFILE%')
-    default_output_dir = os.path.expandvars(r'%USERPROFILE%\Downloads')
-    program = 'qpdf.exe'
-
-class OldLogger():
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.formatter = logging.Formatter('%(asctime)s: %(message)s', datefmt='%H:%M:%S')
-
-        self.file_handler = logging.FileHandler('output.log', mode='w')
-        self.file_handler.setFormatter(self.formatter)
-        self.logger.addHandler(self.file_handler)
-
-    def write_to_log(self, text, level):
-        if level.lower() == "error":
-            self.logger.error(text)
-        elif level.lower() == "info":
-            self.logger.info(text)
-        elif level.lower() == "warning":
-            self.logger.warning(text)
-
-    def delete_logger_handler(self):
-        for handler in self.logger.handlers[:]:
-            self.logger.removeHandler(handler)
-
-
-class Log(object):
-    def __init__(self, edit):
-        self.out = sys.stdout
-        self.textEdit = edit
-
-    def write(self, message):
-        self.out.write(message)
-        self.textEdit.appendPlainText(message)
-
-    def flush(self):
-        self.out.flush()
-
-
-class Logger(logging.Handler, QObject):
-    appendPlainText = pyqtSignal(str)
-    def __init__(self, parent):
-        super().__init__()
-        QObject.__init__(self)
-        self.parent = parent
-
-        self.widget = self.parent.logEdit
-        self.appendPlainText.connect(self.widget.appendPlainText)
-
-    def emit(self, record):
-        msg = self.format(record)
-        self.appendPlainText.emit(msg)
-
-
-# subprocess.call and check_call are blocking
-# (waits for the child process to return)
-# so we need to use threading
-# TIME_LIMIT = 100
-
-class WorkerThread(QThread):
-    countChanged = pyqtSignal(int)
-    kill = False
-    stop = False
-
-    def run(self):
-        # global stop
-        # global kill
-        count = 0
-        # while count < TIME_LIMIT:
-        while self.stop != True:
-            count += 10
-            print(count)
-            time.sleep(.2)
-            self.countChanged.emit(count)
-            print(self.stop)
-        self.countChanged.emit(100)
 
 
 class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
@@ -117,7 +33,7 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
         self.setupUi(self)
         self.parent = parent
         self.resize(520, 280)
-        self.outputDir.setText(default_output_dir)
+        self.outputDir.setText(self.parent.default_output_dir)
         self.changeDir.clicked.connect(self.change_outputdir)
         self.btnPassword.setEchoMode(QLineEdit.Password)
         self.buttonOK.clicked.connect(self.disable_btns)
@@ -144,10 +60,10 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
             self.password_shown = False
 
     def change_outputdir(self):
-        default_output_dir = QFileDialog.getExistingDirectory(self,
-                                                              "Choose Output Directory", default_open_loc)
-        if default_output_dir:
-            self.outputDir.setText(default_output_dir)
+        self.default_output_dir = QFileDialog.getExistingDirectory(self,
+                                                              "Choose Output Directory", self.parent.default_open_loc)
+        if self.default_output_dir:
+            self.outputDir.setText(self.default_output_dir)
 
     def disable_btns(self):
         self.buttonOK.setEnabled(False)
@@ -157,24 +73,25 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
 
 class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
     appendSignal = pyqtSignal(str)
-    # resize for testing
     def __init__(self, parent=None):
         QDialog.__init__(self, parent)
-        self.setupUi(self)
         self.parent = parent
+        self.setupUi(self)
+        # setWindowModality stops user from interacting with parent window
+        # whilst the child window is open
+        self.setWindowModality(Qt.ApplicationModal)
         # this gets sized in encrypt.py
         # and then resized here - need to change
         self.resize(800, 443)
-        self.outputDir.setText(default_output_dir)
+        self.outputDir.setText(self.parent.default_output_dir)
         self.changeDir.clicked.connect(self.change_outputdir)
         self.btnPassword.setEchoMode(QLineEdit.Password)
         self.btnPassword2.setEchoMode(QLineEdit.Password)
         self.buttonOK.clicked.connect(self.disable_btns)
         self.buttonClose.clicked.connect(self.close)
         self.appendSignal.connect(self.reallyAppendToTextEdit)
-        # resize for testing func
-        # self.setWindowModality(Qt.ApplicationModal)
         self.setWindowTitle("Encrypt")
+        self.default_output_dir = self.parent.default_output_dir
         # show password
         icon1 = QIcon()
         icon1.addPixmap(QPixmap(":/icons/resources/view_simple [#815].png"),
@@ -202,11 +119,11 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         # self.log_inst = Logger(self)
 
         # resize window for testing
+
     def resizeEvent(self, event):
         print("resize")
         print("Width: {}".format(event.size().width()))
         print("Height: {}".format(event.size().height()))
-
 
 
     def show_password(self):
@@ -227,9 +144,13 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
 
     def change_outputdir(self):
         default_output_dir = QFileDialog.getExistingDirectory(self,
-                                                              "Choose Output Directory", default_open_loc)
+                                                              "Choose Output Directory", self.parent.default_open_loc)
         if default_output_dir:
-            self.outputDir.setText(default_output_dir)
+            self.default_output_dir = default_output_dir
+            self.outputDir.setText(self.default_output_dir)
+        else:
+            self.default_output_dir = self.parent.default_output_dir
+            self.outputDir.setText(self.parent.default_output_dir)
 
     def onButtonClick(self):
         self.worker = WorkerThread()
@@ -281,16 +202,15 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         elif rc == 3:
             # these are warnings, safe to ignore
             pass
+        print(threading.active_count())
 
 
     def encrypt(self, passwd, passwd2):
         self.logEdit.clear()
 
-        self.progressBar.setProperty("value", 0)
         successful = []
         errors = 0
 
-        destination = default_output_dir
         identifier = '(encry)'
         # aes_choice = self.AESOption.activated[int]
         # aes_choice = str(self.AESOption.currentText()).strip('AES-')
@@ -304,10 +224,18 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                 new_file_path = Path(item)
                 suffix = new_file_path.suffix
                 new_filename = new_file_path.stem+identifier+suffix
-                self.thread1 = threading.Thread(target = self.runcmd, args = ("qpdf", "--encrypt", self.btnPassword.text(), self.btnPassword2.text(), "256", "--", item, os.path.join(destination, new_filename), "--progress",))
+                self.thread1 = threading.Thread(target = self.runcmd, args = ("qpdf", "--encrypt", self.btnPassword.text(), self.btnPassword2.text(), "256", "--", item, os.path.join(self.default_output_dir, new_filename), "--progress",))
                 self.thread1.daemon = True
                 self.thread1.start()
-            print(threading.enumerate())
+                # while self.thread1.is_alive():
+                #     pass
+                #     if not self.thread1.is_alive():
+                #         print(self.thread1.is_alive())
+                #         break
+        #     pass
+        #     if not self.thread1.is_alive():
+        #         print("dead")
+        #         break
         # self.renable_btns()
 
 
@@ -344,6 +272,16 @@ class LoadingScreen(QWidget):
 class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
     def __init__(self, parent=None):
         super(ExampleApp, self).__init__(parent)
+        if os.name == 'posix':
+            #  linux os
+            self.default_open_loc = os.path.expanduser('~/')
+            self.default_output_dir = os.path.expanduser('~/Downloads')
+            self.program = 'qpdf'
+        elif os.name == 'nt':
+            # windows os
+            self.default_open_loc = os.path.expandvars(r'%USERPROFILE%')
+            self.default_output_dir = os.path.expandvars(r'%USERPROFILE%\Downloads')
+            self.program = 'qpdf.exe'
         self.setupUi(self)
         self.actionExit.triggered.connect(self.exit)
         self.btnOpenFolder.triggered.connect(self.open_folder)
@@ -378,7 +316,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
 
     def open_folder(self):
         directory = QFileDialog.getExistingDirectory(self, "Import Folder",
-                                                     default_open_loc)
+                                                     self.default_open_loc)
         if directory:
             for file in os.listdir(directory):
                 if file.endswith(".pdf"):
@@ -387,7 +325,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
 
     def add_file(self):
         file, _ = QFileDialog.getOpenFileNames(self, "Import Files",
-                                              default_open_loc, filter='*.pdf')
+                                              self.default_open_loc, filter='*.pdf')
         if file:
             for f in file:
                 self.listWidget.addItem(f)
@@ -422,7 +360,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
         new_decrypt_screen = DecryptScreen(self)
 
     def decrypt(self, passwd, okbtn, logEdit):
-        destination = default_output_dir
+        destination = self.default_output_dir
         identifier = '(decry)'
         itemsTextList = [str(self.listWidget.item(i).text()) for i in range(self.listWidget.count())]
         if len(itemsTextList) == 0:
