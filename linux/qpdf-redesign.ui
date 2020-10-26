@@ -14,8 +14,18 @@
    <string>MainWindow</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">QWidget { 
+   <string notr="true">QWidget{
 background-color: #1E1E1E;
+color: #ffffff;
+font-weight: bold;
+}
+
+QToolBar{ 
+font-weight: bold;
+padding: 5px; 
+}
+
+QListWidget{ 
 color: #ffffff;
 font-weight: bold;
 padding: 5px; 
@@ -41,9 +51,56 @@ QPushButton::hover{
 background-color: #18ff94;
 font-weight: bold;
 color: #1E1E1E;
-}</string>
+}
+QScrollBar{
+        border: 1px solid #ffffff;
+}
+QScrollBar:vertical {
+        width:12px;
+        margin: 0px 0px 0px 0px;
+    }
+QScrollBar::handle:vertical {
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop: 0 rgb(32, 47, 130), stop: 0.5 rgb(32, 47, 130), stop:1 rgb(32, 47, 130));
+        min-height: 0px;
+}
+QScrollBar::add-line:vertical {
+        height: 0px;
+        subcontrol-position: bottom;
+        subcontrol-origin: margin;
+    }
+    QScrollBar::sub-line:vertical {
+       height: 0 px;
+        subcontrol-position: top;
+        subcontrol-origin: margin;
+    }
+QScrollBar:horizontal {
+			height: 12px;
+			margin: 0px 0px 0px 0px;
+        }
+
+        QScrollBar::handle:horizontal {
+            /* background: lightgray;*/
+			background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop: 0 rgb(32, 47, 130), stop: 0.5 rgb(32, 47, 130), stop:1 rgb(32, 47, 130));
+            min-height: 0px;
+			min-width: 26px;
+        }
+
+        QScrollBar::add-line:horizontal {
+		   width: 26px;
+            subcontrol-position: right;
+            subcontrol-origin: margin;
+        }
+  QScrollBar::sub-line:horizontal {
+       height: 0 px;
+        subcontrol-position: top;
+        subcontrol-origin: margin;
+    }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
      <widget class="QListWidget" name="listWidget">
@@ -82,7 +139,7 @@ color: #1E1E1E;
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>31</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

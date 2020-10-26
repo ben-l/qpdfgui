@@ -20,25 +20,33 @@ import sys
 import time
 import threading
 
+
 class bcolors:
     FAIL = '\033[91m'
     OKGREEN = '\033[92m'
 
 
-
-
 class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
+    appendSignal = pyqtSignal(str)
+
     def __init__(self, parent=None):
         QDialog.__init__(self, parent)
         self.setupUi(self)
         self.parent = parent
-        self.resize(520, 280)
-        self.outputDir.setText(self.parent.default_output_dir)
+        self.resize(800, 443)
         self.changeDir.clicked.connect(self.change_outputdir)
         self.btnPassword.setEchoMode(QLineEdit.Password)
         self.buttonOK.clicked.connect(self.disable_btns)
         self.buttonClose.clicked.connect(self.close)
+        self.default_output_dir = self.parent.default_output_dir
+        self.outputDir.setText(self.parent.default_output_dir)
         self.setWindowTitle("Decrypt")
+
+        # Threads and Signals
+        self.maxthreads = 1
+        self.sema = threading.Semaphore(value=self.maxthreads)
+        self.threads = []
+        self.appendSignal.connect(self.reallyAppendToTextEdit)
 
         # show password
         icon1 = QIcon()
@@ -60,15 +68,71 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
             self.password_shown = False
 
     def change_outputdir(self):
-        self.default_output_dir = QFileDialog.getExistingDirectory(self,
-                                                              "Choose Output Directory", self.parent.default_open_loc)
-        if self.default_output_dir:
+        # replace None with self to use non-native qfiledialog
+        default_output_dir = \
+                QFileDialog.getExistingDirectory(self,
+                                                 "Choose Output Directory",
+                                                 self.parent.default_open_loc)
+        if default_output_dir:
+            self.default_output_dir = default_output_dir
             self.outputDir.setText(self.default_output_dir)
+        else:
+            self.default_output_dir = self.parent.default_output_dir
+            self.outputDir.setText(self.parent.default_output_dir)
 
     def disable_btns(self):
-        self.buttonOK.setEnabled(False)
-        self.btnPassword.setEnabled(False)
-        self.parent.decrypt(self.btnPassword, self.buttonOK, self.logEdit)
+        # for the time being do not disable
+        # self.buttonOK.setEnabled(False)
+        # self.btnPassword.setEnabled(False)
+        self.decrypt()
+
+    def reallyAppendToTextEdit(self, txt):
+        self.logEdit.appendPlainText(txt)
+
+    def runcmd(self, *cmd):
+        self.sema.acquire()
+        process = subprocess.Popen([*cmd], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf8')
+        while True:
+            # the process will hang because output is a byte array
+            # make sure to decode readline
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                self.appendToTextEdit = self.appendSignal.emit
+                self.appendToTextEdit(output.strip())
+                print(output.strip())
+        self.sema.release()
+        rc = process.poll()
+        if rc == 1 or rc == 2:
+            # these are errors
+            print(rc)
+        elif rc == 3:
+            # these are warnings, safe to ignore
+            print(rc)
+
+    def decrypt(self):
+        self.logEdit.clear()
+        identifier = '(decry)'
+        itemsTextList = [str(self.parent.listWidget.item(i).text())
+                         for i in range(self.parent.listWidget.count())]
+        for item in itemsTextList:
+            new_file_path = Path(item)
+            suffix = new_file_path.suffix
+            new_filename = new_file_path.stem+identifier+suffix
+            self.thread1 = threading.Thread(target=self.runcmd, args=(self.parent.program, "--decrypt", "--password={}".format(self.btnPassword.text()), item, os.path.join(self.default_output_dir, new_filename), "--progress",))
+            self.thread1.daemon = True
+            self.thread1.start()
+        """
+        if len(unsuccessful) > 0:
+            self.show_dialog(icon=QMessageBox.Warning,
+                             text="Bad Password for {} file(s):\n{}".format(len(unsuccessful), "\n".join(unsuccessful)),
+                             window_title="decrypt")
+        if len(success) > 0:
+            self.show_dialog(icon=QMessageBox.Information,
+                             text="{} pdf(s) successfully decrypted:\n{}".format(len(success), "\n".join(success)),
+                             window_title="decrypt")
+        """
 
 
 class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
@@ -143,6 +207,7 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
             self.password_shown = False
 
     def change_outputdir(self):
+        # replace None with self to use non-native qfiledialog
         default_output_dir = QFileDialog.getExistingDirectory(self,
                                                               "Choose Output Directory", self.parent.default_open_loc)
         if default_output_dir:
@@ -315,6 +380,7 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
         # self.progress.setGeometry(200, 80, 250, 20)
 
     def open_folder(self):
+        # replace None with self to use non-native qfiledialog
         directory = QFileDialog.getExistingDirectory(self, "Import Folder",
                                                      self.default_open_loc)
         if directory:
@@ -324,8 +390,10 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
                     self.listWidget.addItem(filter)
 
     def add_file(self):
+        # replace None with self to use non-native qfiledialog
         file, _ = QFileDialog.getOpenFileNames(self, "Import Files",
-                                              self.default_open_loc, filter='*.pdf')
+                                               self.default_open_loc,
+                                               filter='*.pdf')
         if file:
             for f in file:
                 self.listWidget.addItem(f)
@@ -359,50 +427,6 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
     def decrypt_screen(self):
         new_decrypt_screen = DecryptScreen(self)
 
-    def decrypt(self, passwd, okbtn, logEdit):
-        destination = self.default_output_dir
-        identifier = '(decry)'
-        itemsTextList = [str(self.listWidget.item(i).text()) for i in range(self.listWidget.count())]
-        if len(itemsTextList) == 0:
-            # self.log_inst.write_to_log("No files to decrypt")
-            pass
-        else:
-            #self.log_inst.write_to_log("Decrypting...")
-            for item in itemsTextList:
-                new_file_path = Path(item)
-                suffix = new_file_path.suffix
-                new_filename = new_file_path.stem+identifier+suffix
-                try:
-                    subprocess.check_output([program, "--decrypt", "--password={}".format(passwd.text()), item, os.path.join(destination, new_filename)], stderr=subprocess.STDOUT).decode()
-                    okbtn.setEnabled(True)
-                    passwd.setEnabled(True)
-                except subprocess.CalledProcessError as e:
-                    if e.returncode == 1 or e.returncode == 2:
-                        # unsuccessful.append(item)
-                        # logEdit.setPlainText("Bad Password ({}) for:\n{}".format(p.returncode, "\n".join(unsuccessful)))
-                        # self.write_to_log("Bad Password ({}): {}".format(e.returncode, item))
-                        self.write_to_log(e.output.decode())
-                except FileNotFoundError:
-                    # if qpdf binary cannot be found
-                    self.not_found()
-                else:
-                    # success.append(destination+new_filename)
-                    self.write_to_log("{}: decrypted".format(os.path.join(destination, new_filename)))
-        # put reading log file into a new func that uses threads
-        # so that we can use both decrypt and encrypt whilst displaying log file
-        open_log = open('output.log', 'r')
-        logEdit.setPlainText(open_log.read())
-        open_log.close()
-        """
-        if len(unsuccessful) > 0:
-            self.show_dialog(icon=QMessageBox.Warning,
-                             text="Bad Password for {} file(s):\n{}".format(len(unsuccessful), "\n".join(unsuccessful)),
-                             window_title="decrypt")
-        if len(success) > 0:
-            self.show_dialog(icon=QMessageBox.Information,
-                             text="{} pdf(s) successfully decrypted:\n{}".format(len(success), "\n".join(success)),
-                             window_title="decrypt")
-        """
 
 
 def main():
