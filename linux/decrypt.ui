@@ -6,12 +6,17 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>339</width>
-    <height>269</height>
+    <width>716</width>
+    <height>539</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget {
+padding: 5px;
+}</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>

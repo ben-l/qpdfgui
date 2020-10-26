@@ -28,7 +28,8 @@ padding: 5px;
 QListWidget{ 
 color: #ffffff;
 font-weight: bold;
-padding: 5px; 
+padding: 5px;
+outline: 0;
 }
 
 QListWidget::item:hover{
@@ -39,6 +40,7 @@ QListWidget::item:hover{
 QListWidget::item::selected{
 	background-color: #18ff94;
 	color: #1E1E1E;
+	outline:0;
 }
 
 QPushButton{
@@ -144,11 +146,24 @@ QScrollBar:horizontal {
    </property>
   </widget>
   <widget class="QToolBar" name="toolBar">
+   <property name="font">
+    <font>
+     <pointsize>8</pointsize>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
    <property name="allowedAreas">
     <set>Qt::AllToolBarAreas</set>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>27</width>
+     <height>27</height>
+    </size>
    </property>
    <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>

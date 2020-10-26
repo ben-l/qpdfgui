@@ -14,7 +14,11 @@
    <string>Form</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">QPlainTextEdit{
+   <string notr="true">QWidget {
+	padding: 5px;
+}
+
+QPlainTextEdit{
 line-height: 1.6;
 }
 QScrollBar:vertical {

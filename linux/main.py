@@ -1,12 +1,14 @@
 from PyQt5.QtGui import QMovie, QPixmap, QIcon
-from PyQt5.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal, QObject
+from PyQt5.QtCore import (Qt, QTimer, QSize, QThread, pyqtSignal,
+                          QObject, QModelIndex)
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QFileDialog,
                              QInputDialog, QMessageBox, QLineEdit,
                              QCheckBox, QWidget, QProgressBar, QLabel,
                              QDialog, QGridLayout, QPushButton, QAction,
                              QHBoxLayout)
-from subprocess import Popen, PIPE
 from pathlib import Path
+from subprocess import Popen, PIPE
+import datetime
 import decrypt
 import design
 import encrypt
@@ -17,7 +19,6 @@ import redesign
 import shlex
 import subprocess
 import sys
-import time
 import threading
 
 
@@ -47,6 +48,12 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
         self.sema = threading.Semaphore(value=self.maxthreads)
         self.threads = []
         self.appendSignal.connect(self.reallyAppendToTextEdit)
+
+        # final status
+        self.startTime = 0
+        self.successful = []
+        self.warnings = []
+        self.errors = []
 
         # show password
         icon1 = QIcon()
@@ -81,16 +88,26 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
             self.outputDir.setText(self.parent.default_output_dir)
 
     def disable_btns(self):
-        # for the time being do not disable
-        # self.buttonOK.setEnabled(False)
-        # self.btnPassword.setEnabled(False)
+        self.buttonOK.setEnabled(False)
+        self.btnPassword.setEnabled(False)
         self.decrypt()
+
+    def renable_btns(self):
+        self.buttonOK.setEnabled(True)
+        self.btnPassword.setEnabled(True)
+        self.btnPassword2.setEnabled(True)
 
     def reallyAppendToTextEdit(self, txt):
         self.logEdit.appendPlainText(txt)
 
     def runcmd(self, *cmd):
         self.sema.acquire()
+        filename = cmd[3]
+        print(filename)
+        try:
+            self.startTime = datetime.datetime.now()
+        except TypeError:
+            pass
         process = subprocess.Popen([*cmd], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf8')
         while True:
             # the process will hang because output is a byte array
@@ -106,13 +123,34 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
         rc = process.poll()
         if rc == 1 or rc == 2:
             # these are errors
-            print(rc)
+            self.errors.append(filename)
         elif rc == 3:
             # these are warnings, safe to ignore
-            print(rc)
+            self.warnings.append(filename)
+        else:
+            self.successful.append(filename)
+
+    def thread_status(self):
+        print(threading.enumerate())
+        while self.thread1.is_alive():
+            if self.thread1.is_alive() is False:
+                break
+        time_completed = datetime.datetime.now() - self.startTime
+        self.appendToTextEdit("\nTime Elapsed: {}".format(time_completed))
+        if len(self.successful):
+            self.appendToTextEdit("{} file(s) successful".format(len(self.successful)))
+        if len(self.warnings):
+            self.appendToTextEdit("{} file(s) successful with a warning".format(len(self.warnings)))
+        if len(self.errors):
+            self.appendToTextEdit("{} file(s) encountered an ERROR".format(len(self.errors)))
+        self.renable_btns()
 
     def decrypt(self):
         self.logEdit.clear()
+        successful = []
+        warnings = []
+        errors = []
+
         identifier = '(decry)'
         itemsTextList = [str(self.parent.listWidget.item(i).text())
                          for i in range(self.parent.listWidget.count())]
@@ -123,16 +161,9 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
             self.thread1 = threading.Thread(target=self.runcmd, args=(self.parent.program, "--decrypt", "--password={}".format(self.btnPassword.text()), item, os.path.join(self.default_output_dir, new_filename), "--progress",))
             self.thread1.daemon = True
             self.thread1.start()
-        """
-        if len(unsuccessful) > 0:
-            self.show_dialog(icon=QMessageBox.Warning,
-                             text="Bad Password for {} file(s):\n{}".format(len(unsuccessful), "\n".join(unsuccessful)),
-                             window_title="decrypt")
-        if len(success) > 0:
-            self.show_dialog(icon=QMessageBox.Information,
-                             text="{} pdf(s) successfully decrypted:\n{}".format(len(success), "\n".join(success)),
-                             window_title="decrypt")
-        """
+        self.thread2 = threading.Thread(target=self.thread_status)
+        self.thread2.daemon = True
+        self.thread2.start()
 
 
 class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
@@ -172,6 +203,12 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.maxthreads = 1
         self.sema = threading.Semaphore(value=self.maxthreads)
         self.threads = []
+
+        # final status
+        self.startTime = 0
+        self.successful = []
+        self.warnings = []
+        self.errors = []
 
         self.show()
         # create new instance of Logger
@@ -233,9 +270,9 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         print(value)
 
     def disable_btns(self):
-        # self.buttonOK.setEnabled(False)
-        # self.btnPassword.setEnabled(False)
-        # self.btnPassword2.setEnabled(False)
+        self.buttonOK.setEnabled(False)
+        self.btnPassword.setEnabled(False)
+        self.btnPassword2.setEnabled(False)
         self.encrypt(self.btnPassword, self.btnPassword2)
 
     def renable_btns(self):
@@ -248,6 +285,11 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
 
     def runcmd(self, *cmd):
         self.sema.acquire()
+        filename = cmd[6]
+        try:
+            self.startTime = datetime.datetime.now()
+        except TypeError:
+            pass
         process = subprocess.Popen([*cmd], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf8')
         while True:
             # the process will hang because output is a byte array
@@ -263,18 +305,36 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         rc = process.poll()
         if rc == 1 or rc == 2:
             # these are errors
-            pass
+            self.errors.append(filename)
         elif rc == 3:
             # these are warnings, safe to ignore
-            pass
-        print(threading.active_count())
+            self.warnings.append(filename)
+        else:
+            self.successful.append(filename)
+
+    def thread_status(self):
+        print(threading.enumerate())
+        while self.thread1.is_alive():
+            if self.thread1.is_alive() is False:
+                break
+        time_completed = datetime.datetime.now() - self.startTime
+        self.appendToTextEdit("\nTime Elapsed: {}".format(time_completed))
+        if len(self.successful):
+            self.appendToTextEdit("{} file(s) successful".format(len(self.successful)))
+        if len(self.warnings):
+            self.appendToTextEdit("{} file(s) successful with a warning".format(len(self.warnings)))
+        if len(self.errors):
+            self.appendToTextEdit("{} file(s) encountered an ERROR".format(len(self.errors)))
+        self.renable_btns()
 
 
     def encrypt(self, passwd, passwd2):
         self.logEdit.clear()
 
+        # reset lists
         successful = []
-        errors = 0
+        warnings = []
+        errors = []
 
         identifier = '(encry)'
         # aes_choice = self.AESOption.activated[int]
@@ -289,20 +349,12 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
                 new_file_path = Path(item)
                 suffix = new_file_path.suffix
                 new_filename = new_file_path.stem+identifier+suffix
-                self.thread1 = threading.Thread(target = self.runcmd, args = ("qpdf", "--encrypt", self.btnPassword.text(), self.btnPassword2.text(), "256", "--", item, os.path.join(self.default_output_dir, new_filename), "--progress",))
+                self.thread1 = threading.Thread(target = self.runcmd, args = (self.parent.program, "--encrypt", self.btnPassword.text(), self.btnPassword2.text(), "256", "--", item, os.path.join(self.default_output_dir, new_filename), "--progress",))
                 self.thread1.daemon = True
                 self.thread1.start()
-                # while self.thread1.is_alive():
-                #     pass
-                #     if not self.thread1.is_alive():
-                #         print(self.thread1.is_alive())
-                #         break
-        #     pass
-        #     if not self.thread1.is_alive():
-        #         print("dead")
-        #         break
-        # self.renable_btns()
-
+        self.thread2 = threading.Thread(target = self.thread_status)
+        self.thread2.daemon = True
+        self.thread2.start()
 
 
 class LoadingScreen(QWidget):
@@ -356,6 +408,19 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
         self.btnEncrypt.triggered.connect(self.encrypt_screen)
         self.btnDecrypt.triggered.connect(self.decrypt_screen)
         # self.AESOption.activated[int]
+
+        # remove initial dotted line/focus from qlistwidget item
+        self.listWidget.setCurrentIndex(QModelIndex())
+        """
+        if len(unsuccessful) > 0:
+            self.show_dialog(icon=QMessageBox.Warning,
+                             text="Bad Password for {} file(s):\n{}".format(len(unsuccessful), "\n".join(unsuccessful)),
+                             window_title="decrypt")
+        if len(success) > 0:
+            self.show_dialog(icon=QMessageBox.Information,
+                             text="{} pdf(s) successfully decrypted:\n{}".format(len(success), "\n".join(success)),
+                             window_title="decrypt")
+        """
 
     def exit(self):
         sys.exit(0)
@@ -421,8 +486,6 @@ class ExampleApp(QMainWindow, redesign.Ui_MainWindow):
 
     def encrypt_screen(self):
         self.new_encrypt_screen = EncryptScreen(self)
-        # return self.new_encrypt_screen
-
 
     def decrypt_screen(self):
         new_decrypt_screen = DecryptScreen(self)
