@@ -95,7 +95,6 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
     def renable_btns(self):
         self.buttonOK.setEnabled(True)
         self.btnPassword.setEnabled(True)
-        self.btnPassword2.setEnabled(True)
 
     def reallyAppendToTextEdit(self, txt):
         self.logEdit.appendPlainText(txt)
@@ -147,9 +146,9 @@ class DecryptScreen(QDialog, decrypt.Ui_decryptUI):
 
     def decrypt(self):
         self.logEdit.clear()
-        successful = []
-        warnings = []
-        errors = []
+        self.successful = []
+        self.warnings = []
+        self.errors = []
 
         identifier = '(decry)'
         itemsTextList = [str(self.parent.listWidget.item(i).text())
@@ -332,9 +331,9 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         self.logEdit.clear()
 
         # reset lists
-        successful = []
-        warnings = []
-        errors = []
+        self.successful = []
+        self.warnings = []
+        self.errors = []
 
         identifier = '(encry)'
         # aes_choice = self.AESOption.activated[int]
@@ -343,7 +342,7 @@ class EncryptScreen(QDialog, encrypt.Ui_encryptUI):
         if passwd.text() != passwd2.text():
             self.logEdit.insertPlainText("ERROR: Passwords do not match")
             self.renable_btns()
-            successful.append(1)
+            self.successful.append(1)
         elif passwd.text() == passwd2.text():
             for item in itemsTextList:
                 new_file_path = Path(item)

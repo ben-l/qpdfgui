@@ -1,0 +1,12 @@
+fix time elapsed
+disable encrypt/decrypt buttons when there are no files imported
+when close is clicked, if there are any running threads - destroy
+remove dotted line in listwidget (occurs after clicking outside of selected items)
+fix pixelated password reveal eye - also change cursor to hand when hovering over 
+status summary add link to see full list of files with warnings/errors
+window management needs to be reviewed
+add threads comboBox - user can choose how many threads depending on their hardware
+fix scroll bar colors
+change font and size for qlineedits
+move exit icon to the right side of the toolBar
+refactor code into different files

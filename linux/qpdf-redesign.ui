@@ -20,6 +20,10 @@ color: #ffffff;
 font-weight: bold;
 }
 
+QLineEdit {
+padding: 5px;
+}
+
 QToolBar{ 
 font-weight: bold;
 padding: 5px; 
@@ -46,7 +50,8 @@ QListWidget::item::selected{
 QPushButton{
 background-color: #3E3E42;
 font-weight: bold;
-color: #ffffff
+color: #ffffff;
+padding: 5px;
 }
 
 QPushButton::hover{

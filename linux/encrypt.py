@@ -12,11 +12,7 @@ class Ui_encryptUI(object):
     def setupUi(self, encryptUI):
         encryptUI.setObjectName("encryptUI")
         encryptUI.resize(772, 588)
-        encryptUI.setStyleSheet("QWidget {\n"
-"    padding: 5px;\n"
-"}\n"
-"\n"
-"QPlainTextEdit{\n"
+        encryptUI.setStyleSheet("QPlainTextEdit{\n"
 "line-height: 1.6;\n"
 "}\n"
 "QScrollBar:vertical {\n"
